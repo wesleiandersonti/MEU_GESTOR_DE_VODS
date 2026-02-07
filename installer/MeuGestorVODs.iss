@@ -27,16 +27,13 @@ UninstallDisplayIcon={app}\{#MyAppExeName}
 [Languages]
 Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"
 
-[Tasks]
-Name: "desktopicon"; Description: "Criar atalho na area de trabalho"; GroupDescription: "Atalhos:"
-
 [Files]
 Source: "..\output\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\MEU GESTOR DE VODS"; Filename: "{app}\{#MyAppExeName}"
 Name: "{group}\Desinstalar MEU GESTOR DE VODS"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\MEU GESTOR DE VODS"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{autodesktop}\MEU GESTOR DE VODS"; Filename: "{app}\{#MyAppExeName}"
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Executar MEU GESTOR DE VODS"; Flags: nowait postinstall skipifsilent
