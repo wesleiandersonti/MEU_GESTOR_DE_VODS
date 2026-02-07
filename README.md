@@ -8,6 +8,7 @@ Gerenciador de VODs para listas IPTV M3U em C# .NET 8 (WPF).
 - Arquitetura XUI One (referencia): `docs/ARQUITETURA_XUI_ONE_IPTV.md`
 - Modelo de dados (XUI-style): `docs/MODELO_DE_DADOS_XUI.md`
 - Plano de implementacao: `docs/PLANO_DE_IMPLEMENTACAO_XUI.md`
+- Plano tecnico por arquivo/classe: `docs/PLANO_TECNICO_POR_ARQUIVO_CLASSE.md`
 
 ## 🚀 Download
 
