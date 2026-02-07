@@ -13,7 +13,12 @@ public class M3UEntry
     public string Name { get; set; } = string.Empty;
     public string Url { get; set; } = string.Empty;
     public string GroupTitle { get; set; } = string.Empty;
+    public string Category { get; set; } = "Sem Categoria";
+    public string SubCategory { get; set; } = "Geral";
     public bool IsSelected { get; set; }
+
+    public string GroupDisplay => $"{Category} | {SubCategory}";
+    public string GroupKey => $"{Category}|{SubCategory}";
 
     public string SanitizedName
     {
@@ -52,16 +57,47 @@ public static class M3UParser
                 continue;
             }
 
+            var rawGroupTitle = ExtractAttribute(line, "group-title") ?? string.Empty;
+            var (category, subCategory, groupDisplay) = ParseGroupTitle(rawGroupTitle);
+
             entries.Add(new M3UEntry
             {
                 Url = nextLine,
                 Id = ExtractAttribute(line, "tvg-id") ?? Guid.NewGuid().ToString("N")[..8],
                 Name = ExtractAttribute(line, "tvg-name") ?? ExtractName(line) ?? "Unknown",
-                GroupTitle = ExtractAttribute(line, "group-title") ?? string.Empty
+                GroupTitle = groupDisplay,
+                Category = category,
+                SubCategory = subCategory
             });
         }
 
         return entries;
+    }
+
+    private static (string category, string subCategory, string groupDisplay) ParseGroupTitle(string rawGroupTitle)
+    {
+        var value = (rawGroupTitle ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return ("Sem Categoria", "Geral", "Sem Categoria | Geral");
+        }
+
+        var primarySeparator = value.Contains('|') ? '|' : value.Contains('>') ? '>' : '\0';
+        if (primarySeparator != '\0')
+        {
+            var parts = value.Split(primarySeparator, StringSplitOptions.RemoveEmptyEntries)
+                             .Select(p => p.Trim())
+                             .Where(p => !string.IsNullOrWhiteSpace(p))
+                             .ToArray();
+            if (parts.Length >= 2)
+            {
+                var category = parts[0];
+                var subCategory = string.Join(" | ", parts.Skip(1));
+                return (category, subCategory, $"{category} | {subCategory}");
+            }
+        }
+
+        return (value, "Geral", $"{value} | Geral");
     }
 
     private static string? ExtractAttribute(string line, string attribute)

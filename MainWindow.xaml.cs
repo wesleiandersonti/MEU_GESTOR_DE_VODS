@@ -24,8 +24,12 @@ namespace MeuGestorVODs
         private string _filterText = "";
         private string _statusMessage = "Pronto";
         private string _currentVersionText = "Versao atual: -";
+        private string _itemCountText = "Itens: 0";
+        private string _groupCountText = "Grupos: 0";
+        private string _groupFilterInfoText = "";
+        private Visibility _groupPanelVisibility = Visibility.Collapsed;
         private bool _isLoading = false;
-        private M3UEntry _selectedEntry;
+        private M3UEntry _selectedEntry = new M3UEntry();
         private const string DownloadStructureFileName = "estrutura_downloads.txt";
         private const string VodLinksDatabaseFileName = "banco_vod_links.txt";
         private const string LiveLinksDatabaseFileName = "banco_canais_ao_vivo.txt";
@@ -33,10 +37,14 @@ namespace MeuGestorVODs
         private readonly HttpClient _releaseClient = new HttpClient();
         private Dictionary<string, string> _downloadStructure = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private bool _isUpdateInProgress;
+        private readonly List<M3UEntry> _allEntries = new List<M3UEntry>();
+        private string? _selectedCategoryFilter;
+        private string? _selectedGroupKeyFilter;
 
         public ObservableCollection<M3UEntry> Entries { get; set; } = new ObservableCollection<M3UEntry>();
         public ObservableCollection<M3UEntry> FilteredEntries { get; set; } = new ObservableCollection<M3UEntry>();
         public ObservableCollection<DownloadItem> Downloads { get; set; } = new ObservableCollection<DownloadItem>();
+        public ObservableCollection<GroupCategoryItem> GroupCategories { get; set; } = new ObservableCollection<GroupCategoryItem>();
 
         public string M3UUrl
         {
@@ -73,6 +81,30 @@ namespace MeuGestorVODs
             set { _currentVersionText = value; OnPropertyChanged(nameof(CurrentVersionText)); }
         }
 
+        public string ItemCountText
+        {
+            get => _itemCountText;
+            set { _itemCountText = value; OnPropertyChanged(nameof(ItemCountText)); }
+        }
+
+        public string GroupCountText
+        {
+            get => _groupCountText;
+            set { _groupCountText = value; OnPropertyChanged(nameof(GroupCountText)); }
+        }
+
+        public string GroupFilterInfoText
+        {
+            get => _groupFilterInfoText;
+            set { _groupFilterInfoText = value; OnPropertyChanged(nameof(GroupFilterInfoText)); }
+        }
+
+        public Visibility GroupPanelVisibility
+        {
+            get => _groupPanelVisibility;
+            set { _groupPanelVisibility = value; OnPropertyChanged(nameof(GroupPanelVisibility)); }
+        }
+
         public bool IsLoading
         {
             get => _isLoading;
@@ -99,6 +131,9 @@ namespace MeuGestorVODs
             EnsureLinkDatabaseFiles();
             _releaseClient.DefaultRequestHeaders.Add("User-Agent", "MeuGestorVODs");
             CurrentVersionText = $"Versao atual: {GetCurrentAppVersion()}";
+            ItemCountText = "Itens: 0";
+            GroupCountText = "Grupos: 0";
+            GroupFilterInfoText = "";
         }
 
         private async void LoadM3U_Click(object sender, RoutedEventArgs e)
@@ -115,12 +150,21 @@ namespace MeuGestorVODs
                 StatusMessage = "Carregando lista M3U...";
                 
                 var entries = await _m3uService.LoadFromUrlAsync(M3UUrl);
-                
+
+                _allEntries.Clear();
+                _allEntries.AddRange(entries);
+
+                _selectedCategoryFilter = null;
+                _selectedGroupKeyFilter = null;
+                GroupFilterInfoText = string.Empty;
+
                 Entries.Clear();
-                foreach (var entry in entries)
+                foreach (var entry in _allEntries)
                 {
                     Entries.Add(entry);
                 }
+
+                BuildGroupIndex(_allEntries);
 
                 var (newVod, newLive) = PersistLinkDatabases(entries);
                 
@@ -141,14 +185,124 @@ namespace MeuGestorVODs
         private void ApplyFilter()
         {
             FilteredEntries.Clear();
-            
-            var filtered = string.IsNullOrWhiteSpace(FilterText)
-                ? Entries
-                : Entries.Where(x => x.Name.ToLower().Contains(FilterText.ToLower()));
+
+            IEnumerable<M3UEntry> filtered = _allEntries;
+
+            if (!string.IsNullOrWhiteSpace(_selectedCategoryFilter))
+            {
+                filtered = filtered.Where(x => string.Equals(x.Category, _selectedCategoryFilter, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (!string.IsNullOrWhiteSpace(_selectedGroupKeyFilter))
+            {
+                filtered = filtered.Where(x => string.Equals(x.GroupKey, _selectedGroupKeyFilter, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (!string.IsNullOrWhiteSpace(FilterText))
+            {
+                filtered = filtered.Where(MatchesFilter);
+            }
 
             foreach (var entry in filtered)
             {
                 FilteredEntries.Add(entry);
+            }
+        }
+
+        private bool MatchesFilter(M3UEntry entry)
+        {
+            return entry.Name.Contains(FilterText, StringComparison.OrdinalIgnoreCase) ||
+                   entry.GroupDisplay.Contains(FilterText, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void BuildGroupIndex(IEnumerable<M3UEntry> entries)
+        {
+            GroupCategories.Clear();
+
+            var groupedByCategory = entries
+                .GroupBy(e => e.Category, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var totalGroups = 0;
+            foreach (var categoryGroup in groupedByCategory)
+            {
+                var categoryItem = new GroupCategoryItem
+                {
+                    CategoryName = categoryGroup.Key
+                };
+
+                var groups = categoryGroup
+                    .GroupBy(e => e.GroupKey, StringComparer.OrdinalIgnoreCase)
+                    .Select(g => new GroupListItem
+                    {
+                        CategoryName = categoryGroup.Key,
+                        GroupName = g.First().SubCategory,
+                        GroupKey = g.Key,
+                        ChannelCount = g.Count()
+                    })
+                    .OrderBy(g => g.GroupName, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                totalGroups += groups.Count;
+                foreach (var group in groups)
+                {
+                    categoryItem.Groups.Add(group);
+                }
+
+                GroupCategories.Add(categoryItem);
+            }
+
+            ItemCountText = $"Itens: {_allEntries.Count}";
+            GroupCountText = $"Grupos: {totalGroups}";
+        }
+
+        private void ItemsSummary_Click(object sender, RoutedEventArgs e)
+        {
+            _selectedCategoryFilter = null;
+            _selectedGroupKeyFilter = null;
+            GroupFilterInfoText = "";
+            FilterText = string.Empty;
+            GroupPanelVisibility = Visibility.Collapsed;
+            ApplyFilter();
+            StatusMessage = $"Listagem completa exibida ({_allEntries.Count} itens).";
+        }
+
+        private void GroupsSummary_Click(object sender, RoutedEventArgs e)
+        {
+            if (GroupCategories.Count == 0 && _allEntries.Count > 0)
+            {
+                BuildGroupIndex(_allEntries);
+            }
+
+            GroupPanelVisibility = GroupPanelVisibility == Visibility.Visible
+                ? Visibility.Collapsed
+                : Visibility.Visible;
+
+            StatusMessage = GroupPanelVisibility == Visibility.Visible
+                ? "Painel de grupos aberto"
+                : "Painel de grupos fechado";
+        }
+
+        private void GroupsTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+        {
+            if (e.NewValue is GroupListItem group)
+            {
+                _selectedCategoryFilter = group.CategoryName;
+                _selectedGroupKeyFilter = group.GroupKey;
+                GroupFilterInfoText = $"Filtro: {group.CategoryName} | {group.GroupName}";
+                ApplyFilter();
+                StatusMessage = $"Grupo selecionado: {group.DisplayName}";
+                return;
+            }
+
+            if (e.NewValue is GroupCategoryItem category)
+            {
+                _selectedCategoryFilter = category.CategoryName;
+                _selectedGroupKeyFilter = null;
+                GroupFilterInfoText = $"Filtro: {category.CategoryName}";
+                ApplyFilter();
+                StatusMessage = $"Categoria selecionada: {category.CategoryName}";
             }
         }
 
@@ -188,6 +342,18 @@ namespace MeuGestorVODs
 
             var menu = new ContextMenu();
 
+            var copyItem = new MenuItem
+            {
+                Header = "Copiar URL"
+            };
+            copyItem.Click += CopySelectedUrl_Click;
+
+            var pasteItem = new MenuItem
+            {
+                Header = "Colar (URL M3U)"
+            };
+            pasteItem.Click += PasteToM3uField_Click;
+
             var checkItem = new MenuItem
             {
                 Header = "Verificar se ja esta salvo no TXT"
@@ -200,11 +366,39 @@ namespace MeuGestorVODs
             };
             playItem.Click += PlaySelectedInVlc_Click;
 
+            menu.Items.Add(copyItem);
+            menu.Items.Add(pasteItem);
+            menu.Items.Add(new Separator());
             menu.Items.Add(checkItem);
             menu.Items.Add(playItem);
             menu.PlacementTarget = row;
             menu.IsOpen = true;
             e.Handled = true;
+        }
+
+        private void CopySelectedUrl_Click(object sender, RoutedEventArgs e)
+        {
+            var entry = ResolveCurrentEntry();
+            if (entry == null || string.IsNullOrWhiteSpace(entry.Url))
+            {
+                System.Windows.MessageBox.Show("Selecione um canal com URL valida.", "Copiar URL", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            Clipboard.SetText(entry.Url);
+            StatusMessage = $"URL copiada: {entry.Name}";
+        }
+
+        private void PasteToM3uField_Click(object sender, RoutedEventArgs e)
+        {
+            if (!Clipboard.ContainsText())
+            {
+                System.Windows.MessageBox.Show("Area de transferencia vazia.", "Colar", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            M3UUrl = Clipboard.GetText().Trim();
+            StatusMessage = "URL colada no campo M3U";
         }
 
         private void CheckSelectedInTxt_Click(object sender, RoutedEventArgs e)
@@ -1134,6 +1328,21 @@ namespace MeuGestorVODs
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
+    }
+
+    public class GroupCategoryItem
+    {
+        public string CategoryName { get; set; } = string.Empty;
+        public ObservableCollection<GroupListItem> Groups { get; set; } = new ObservableCollection<GroupListItem>();
+    }
+
+    public class GroupListItem
+    {
+        public string CategoryName { get; set; } = string.Empty;
+        public string GroupName { get; set; } = string.Empty;
+        public string GroupKey { get; set; } = string.Empty;
+        public int ChannelCount { get; set; }
+        public string DisplayName => $"{GroupName} ({ChannelCount})";
     }
 
     public class DownloadItem : INotifyPropertyChanged

@@ -40,7 +40,10 @@ Gerenciador de VODs para listas IPTV M3U em C# .NET 8 (WPF).
 ## ✅ Funcionalidades atuais
 
 - Carregar playlist M3U por URL
+- Botoes interativos no topo: `Itens` e `Grupos`
 - Listar itens com nome e grupo
+- Painel secundario de grupos por categoria (com contagem)
+- Clique em grupo para filtrar automaticamente a lista principal
 - Filtro em tempo real
 - Selecionar todos / desmarcar todos
 - Download de itens selecionados com progresso por item
@@ -51,6 +54,8 @@ Gerenciador de VODs para listas IPTV M3U em C# .NET 8 (WPF).
 - Rollback para versao anterior (baixa e abre instalador da release escolhida)
 - Clique com botao esquerdo sobre um conteudo para abrir menu rapido
 - Menu rapido com:
+  - copiar URL do canal
+  - colar URL no campo M3U
   - verificar se o link ja esta salvo nos bancos TXT
   - reproduzir o conteudo direto no VLC
 
