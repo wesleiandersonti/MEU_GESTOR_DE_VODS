@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
@@ -18,6 +19,8 @@ namespace MeuGestorVODs
         private string _statusMessage = "Pronto";
         private bool _isLoading = false;
         private M3UEntry _selectedEntry;
+        private const string DownloadStructureFileName = "estrutura_downloads.txt";
+        private Dictionary<string, string> _downloadStructure = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         public ObservableCollection<M3UEntry> Entries { get; set; } = new ObservableCollection<M3UEntry>();
         public ObservableCollection<M3UEntry> FilteredEntries { get; set; } = new ObservableCollection<M3UEntry>();
@@ -74,6 +77,7 @@ namespace MeuGestorVODs
             _m3uService = new M3UService();
             _downloadService = new DownloadService();
             DownloadPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), "Meu Gestor VODs");
+            EnsureAndLoadDownloadStructure();
         }
 
         private async void LoadM3U_Click(object sender, RoutedEventArgs e)
@@ -156,8 +160,24 @@ namespace MeuGestorVODs
             if (!Directory.Exists(DownloadPath))
                 Directory.CreateDirectory(DownloadPath);
 
+            EnsureAndLoadDownloadStructure();
+            var skippedExisting = 0;
+
             foreach (var entry in selected)
             {
+                var outputPath = BuildOutputPath(entry);
+                if (File.Exists(outputPath))
+                {
+                    skippedExisting++;
+                    Downloads.Add(new DownloadItem
+                    {
+                        Name = entry.Name,
+                        Progress = 100,
+                        Status = "Ja existe - ignorado"
+                    });
+                    continue;
+                }
+
                 var downloadItem = new DownloadItem
                 {
                     Name = entry.Name,
@@ -170,7 +190,6 @@ namespace MeuGestorVODs
                 {
                     try
                     {
-                        var outputPath = Path.Combine(DownloadPath, entry.SanitizedName + ".mp4");
                         var progress = new Progress<double>(p =>
                         {
                             Dispatcher.Invoke(() => downloadItem.Progress = p);
@@ -194,7 +213,8 @@ namespace MeuGestorVODs
                 });
             }
 
-            StatusMessage = $"Iniciando download de {selected.Count} arquivo(s)";
+            var totalDownload = selected.Count - skippedExisting;
+            StatusMessage = $"Iniciando download de {totalDownload} arquivo(s). {skippedExisting} ja existente(s).";
         }
 
         private void BrowsePath_Click(object sender, RoutedEventArgs e)
@@ -203,7 +223,147 @@ namespace MeuGestorVODs
             if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
                 DownloadPath = dialog.SelectedPath;
+                EnsureAndLoadDownloadStructure();
+                StatusMessage = $"Estrutura de download carregada em: {Path.Combine(DownloadPath, DownloadStructureFileName)}";
             }
+        }
+
+        private void EnsureAndLoadDownloadStructure()
+        {
+            try
+            {
+                if (!Directory.Exists(DownloadPath))
+                {
+                    Directory.CreateDirectory(DownloadPath);
+                }
+
+                var structurePath = Path.Combine(DownloadPath, DownloadStructureFileName);
+                if (!File.Exists(structurePath))
+                {
+                    File.WriteAllLines(structurePath, new[]
+                    {
+                        "# Estrutura de pastas para downloads",
+                        "# Formato: Categoria=Pasta",
+                        "Videos=Videos",
+                        "Series=Series",
+                        "Filmes=Filmes",
+                        "Canais=Canais",
+                        "24 Horas=24 Horas",
+                        "Documentarios=Documentarios",
+                        "Novelas=Novelas",
+                        "Outros=Outros"
+                    });
+                }
+
+                _downloadStructure = LoadStructure(structurePath);
+
+                foreach (var folder in _downloadStructure.Values.Distinct(StringComparer.OrdinalIgnoreCase))
+                {
+                    Directory.CreateDirectory(Path.Combine(DownloadPath, folder));
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Erro ao preparar estrutura de pastas: {ex.Message}";
+            }
+        }
+
+        private Dictionary<string, string> LoadStructure(string structurePath)
+        {
+            var structure = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var rawLine in File.ReadAllLines(structurePath))
+            {
+                var line = rawLine.Trim();
+                if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                var separator = line.IndexOf('=');
+                if (separator <= 0 || separator == line.Length - 1)
+                {
+                    continue;
+                }
+
+                var category = line[..separator].Trim();
+                var folderName = SanitizeFolderName(line[(separator + 1)..].Trim());
+
+                if (!string.IsNullOrWhiteSpace(category) && !string.IsNullOrWhiteSpace(folderName))
+                {
+                    structure[category] = folderName;
+                }
+            }
+
+            if (structure.Count == 0)
+            {
+                structure["Videos"] = "Videos";
+                structure["Series"] = "Series";
+                structure["Outros"] = "Outros";
+            }
+
+            return structure;
+        }
+
+        private string BuildOutputPath(M3UEntry entry)
+        {
+            var category = ResolveCategory(entry);
+            if (!_downloadStructure.TryGetValue(category, out var folderName))
+            {
+                if (!_downloadStructure.TryGetValue("Outros", out folderName))
+                {
+                    folderName = "Outros";
+                }
+            }
+
+            var folderPath = Path.Combine(DownloadPath, folderName);
+            Directory.CreateDirectory(folderPath);
+
+            return Path.Combine(folderPath, entry.SanitizedName + ResolveFileExtension(entry.Url));
+        }
+
+        private string ResolveCategory(M3UEntry entry)
+        {
+            var text = $"{entry.GroupTitle} {entry.Name} {entry.Url}".ToLowerInvariant();
+
+            if (text.Contains("serie") || text.Contains("series") || text.Contains("/series")) return "Series";
+            if (text.Contains("filme") || text.Contains("movie") || text.Contains("cinema") || text.Contains("/movie")) return "Filmes";
+            if (text.Contains("canal") || text.Contains("channels")) return "Canais";
+            if (text.Contains("24 horas") || text.Contains("24h")) return "24 Horas";
+            if (text.Contains("document")) return "Documentarios";
+            if (text.Contains("novela")) return "Novelas";
+
+            return "Videos";
+        }
+
+        private static string ResolveFileExtension(string url)
+        {
+            try
+            {
+                if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
+                {
+                    var ext = Path.GetExtension(uri.AbsolutePath);
+                    if (!string.IsNullOrWhiteSpace(ext) && ext.Length <= 5)
+                    {
+                        return ext;
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            return ".mp4";
+        }
+
+        private static string SanitizeFolderName(string folderName)
+        {
+            foreach (var c in Path.GetInvalidFileNameChars())
+            {
+                folderName = folderName.Replace(c, '_');
+            }
+
+            return folderName.Trim();
         }
 
         private async void CheckUpdates_Click(object sender, RoutedEventArgs e)

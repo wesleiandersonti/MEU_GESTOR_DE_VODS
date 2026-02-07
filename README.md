@@ -131,6 +131,34 @@ Exemplo:
 }
 ```
 
+### Estrutura automatica de pastas (TXT)
+
+Na pasta de download escolhida, o app cria automaticamente o arquivo:
+
+```text
+estrutura_downloads.txt
+```
+
+Formato do arquivo:
+
+```text
+# Formato: Categoria=Pasta
+Videos=Videos
+Series=Series
+Filmes=Filmes
+Canais=Canais
+24 Horas=24 Horas
+Documentarios=Documentarios
+Novelas=Novelas
+Outros=Outros
+```
+
+No momento do download, o app:
+
+- verifica se o arquivo ja existe e ignora duplicados
+- cria automaticamente as pastas definidas no TXT
+- salva cada item na pasta da categoria correspondente
+
 ## 🎯 Funcionalidades de Uso
 
 ### Download de VODs
