@@ -1,48 +1,17 @@
-name: Build and Release
+name: Build
 
-on:
-  push:
-    tags:
-      - 'v*'
-  workflow_dispatch:
+on: [push, workflow_dispatch]
 
 jobs:
   build:
     runs-on: windows-latest
-    
     steps:
     - uses: actions/checkout@v4
-    
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+    - uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '8.0.x'
-    
-    - name: Restore dependencies
-      run: dotnet restore MeuGestorVODs.csproj
-    
-    - name: Build
-      run: dotnet build MeuGestorVODs.csproj --configuration Release --no-restore
-    
-    - name: Publish
-      run: dotnet publish MeuGestorVODs.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o ./publish
-    
-    - name: Create ZIP
-      run: |
-        cd publish
-        7z a ../MEU_GESTOR_DE_VODS.zip *
-    
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v4
+    - run: dotnet publish -c Release -r win-x64 --self-contained -o publish
+    - uses: actions/upload-artifact@v4
       with:
-        name: MEU_GESTOR_DE_VODS
-        path: ./publish
-    
-    - name: Create Release
-      if: startsWith(github.ref, 'refs/tags/')
-      uses: softprops/action-gh-release@v1
-      with:
-        files: MEU_GESTOR_DE_VODS.zip
-        generate_release_notes: true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        name: MeuGestorVODs
+        path: publish/**/*
