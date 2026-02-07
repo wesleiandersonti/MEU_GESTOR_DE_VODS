@@ -172,7 +172,7 @@ namespace MeuGestorVODs
 
         private void EntriesList_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            if (FindParent<CheckBox>(e.OriginalSource as DependencyObject) != null)
+            if (FindParent<System.Windows.Controls.CheckBox>(e.OriginalSource as DependencyObject) != null)
             {
                 return;
             }
