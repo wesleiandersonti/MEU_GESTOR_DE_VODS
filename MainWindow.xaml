@@ -1,0 +1,283 @@
+<Window x:Class="M3UVODDownloader.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:M3UVODDownloader.ViewModels"
+        mc:Ignorable="d"
+        Title="M3U VOD Downloader v2.0" 
+        Height="800" Width="1200"
+        MinHeight="600" MinWidth="900"
+        WindowStartupLocation="CenterScreen">
+    
+    <Window.DataContext>
+        <vm:MainViewModel />
+    </Window.DataContext>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Border Grid.Row="0" Background="#007ACC" Padding="20,15">
+            <TextBlock Text="M3U VOD Downloader" 
+                      FontSize="24" 
+                      FontWeight="Bold" 
+                      Foreground="White"/>
+        </Border>
+
+        <!-- Configuration Panel -->
+        <Border Grid.Row="1" Style="{StaticResource CardBorder}" Margin="10,10,10,0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- M3U URL -->
+                <Grid Grid.Row="0" Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="M3U URL:" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold"/>
+                    <TextBox Grid.Column="1" 
+                            Text="{Binding M3uUrl, UpdateSourceTrigger=PropertyChanged}"
+                            Style="{StaticResource ModernTextBox}"/>
+                    <Button Grid.Column="2" 
+                           Content="Load" 
+                           Command="{Binding LoadM3UCommand}"
+                           Style="{StaticResource ModernButton}"
+                           IsEnabled="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Inverted}"
+                           Margin="10,0,0,0"/>
+                </Grid>
+
+                <!-- Download Path -->
+                <Grid Grid.Row="1" Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Download Path:" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold"/>
+                    <TextBox Grid.Column="1" 
+                            Text="{Binding DownloadPath}"
+                            Style="{StaticResource ModernTextBox}"
+                            IsReadOnly="True"/>
+                    <Button Grid.Column="2" 
+                           Content="Browse..." 
+                           Command="{Binding BrowseDownloadPathCommand}"
+                           Style="{StaticResource ModernButton}"
+                           Margin="10,0,0,0"/>
+                </Grid>
+
+                <!-- Settings -->
+                <Grid Grid.Row="2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Max Parallel Downloads:" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold"/>
+                    <ComboBox Grid.Column="1" 
+                             SelectedItem="{Binding MaxParallelDownloads}" 
+                             Width="60">
+                        <ComboBox.Items>
+                            <System:Int32 xmlns:System="clr-namespace:System;assembly=mscorlib">1</System:Int32>
+                            <System:Int32 xmlns:System="clr-namespace:System;assembly=mscorlib">2</System:Int32>
+                            <System:Int32 xmlns:System="clr-namespace:System;assembly=mscorlib">3</System:Int32>
+                            <System:Int32 xmlns:System="clr-namespace:System;assembly=mscorlib">4</System:Int32>
+                            <System:Int32 xmlns:System="clr-namespace:System;assembly=mscorlib">5</System:Int32>
+                        </ComboBox.Items>
+                    </ComboBox>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- Main Content -->
+        <Grid Grid.Row="2" Margin="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Entries List -->
+            <Border Grid.Column="0" Style="{StaticResource CardBorder}" Margin="0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Filter -->
+                    <Grid Grid.Row="0" Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Filter:" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold"/>
+                        <TextBox Grid.Column="1" 
+                                Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}"
+                                Style="{StaticResource ModernTextBox}"/>
+                    </Grid>
+
+                    <!-- Count -->
+                    <TextBlock Grid.Row="1" 
+                              Text="{Binding Entries.Count, StringFormat='{}{0} items'}" 
+                              Margin="0,0,0,10"
+                              Foreground="Gray"/>
+
+                    <!-- List -->
+                    <DataGrid Grid.Row="2" 
+                             ItemsSource="{Binding Entries}" 
+                             AutoGenerateColumns="False"
+                             CanUserAddRows="False"
+                             SelectionMode="Extended"
+                             GridLinesVisibility="Horizontal">
+                        <DataGrid.Columns>
+                            <DataGridCheckBoxColumn Header="✓" 
+                                                   Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}"
+                                                   Width="40"/>
+                            <DataGridTextColumn Header="Name" 
+                                               Binding="{Binding Name}" 
+                                               Width="*"/>
+                            <DataGridTextColumn Header="Type" 
+                                               Binding="{Binding Type}" 
+                                               Width="80"/>
+                            <DataGridTextColumn Header="Group" 
+                                               Binding="{Binding GroupTitle}" 
+                                               Width="150"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <!-- Actions -->
+                    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,10,0,0">
+                        <Button Content="Select All" 
+                               Command="{Binding SelectAllCommand}"
+                               Style="{StaticResource ModernButton}"/>
+                        <Button Content="Deselect All" 
+                               Command="{Binding DeselectAllCommand}"
+                               Style="{StaticResource ModernButton}"/>
+                        <Separator Width="20" Background="Transparent"/>
+                        <Button Content="Play Selected" 
+                               Command="{Binding PlaySelectedCommand}"
+                               Style="{StaticResource ModernButton}"/>
+                        <Button Content="Download Selected" 
+                               Command="{Binding DownloadSelectedCommand}"
+                               Style="{StaticResource ActionButton}"/>
+                        <Button Content="Cancel" 
+                               Command="{Binding CancelDownloadCommand}"
+                               Style="{StaticResource CancelButton}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Download Progress -->
+            <Border Grid.Column="2" Style="{StaticResource CardBorder}" Margin="0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" 
+                              Text="Downloads" 
+                              FontSize="16" 
+                              FontWeight="Bold"
+                              Margin="0,0,0,10"/>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding DownloadTasks}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="#E0E0E0" 
+                                           BorderThickness="0,0,0,1" 
+                                           Padding="0,10">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+
+                                            <TextBlock Grid.Row="0" 
+                                                      Text="{Binding Entry.Name}" 
+                                                      FontWeight="SemiBold"
+                                                      TextTrimming="CharacterEllipsis"/>
+                                            
+                                            <Grid Grid.Row="1" Margin="0,5">
+                                                <ProgressBar Value="{Binding Progress}" 
+                                                           Maximum="100" 
+                                                           Height="20"/>
+                                                <TextBlock HorizontalAlignment="Center" 
+                                                          VerticalAlignment="Center"
+                                                          Text="{Binding Progress, StringFormat='{}{0:F0}%'}"
+                                                          FontSize="11"/>
+                                            </Grid>
+
+                                            <Grid Grid.Row="2">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" 
+                                                          Text="{Binding Status}" 
+                                                          Foreground="Gray"
+                                                          FontSize="11"/>
+                                                <TextBlock Grid.Column="1" 
+                                                          FontSize="11">
+                                                    <TextBlock.Text>
+                                                        <MultiBinding StringFormat="{}{0} / {1} - {2}">
+                                                            <Binding Path="BytesReceivedFormatted"/>
+                                                            <Binding Path="TotalBytesFormatted"/>
+                                                            <Binding Path="SpeedFormatted"/>
+                                                        </MultiBinding>
+                                                    </TextBlock.Text>
+                                                </TextBlock>
+                                            </Grid>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Status Bar -->
+        <Border Grid.Row="3" Background="#F0F0F0" Padding="15,8">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0" 
+                          Text="{Binding StatusMessage}"
+                          VerticalAlignment="Center"/>
+                
+                <Button Grid.Column="1" 
+                       Content="Check for Updates" 
+                       Command="{Binding CheckForUpdatesCommand}"
+                       Style="{StaticResource ModernButton}"
+                       Margin="0,0,10,0"/>
+                
+                <Button Grid.Column="2" 
+                       Content="Donate" 
+                       Command="{Binding OpenDonateCommand}"
+                       Style="{StaticResource ModernButton}"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
