@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 
-namespace M3UVODDownloader.Security;
+namespace MeuGestorVODs.Security;
 
 public static class SecurityValidator
 {

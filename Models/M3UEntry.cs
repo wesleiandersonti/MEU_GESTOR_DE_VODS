@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 
-namespace M3UVODDownloader.Models;
+namespace MeuGestorVODs.Models;
 
 public class M3UEntry
 {

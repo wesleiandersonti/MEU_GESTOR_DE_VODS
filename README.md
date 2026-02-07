@@ -1,17 +1,17 @@
-# M3U VOD Downloader v1.0
+# MEU GESTOR DE VODS v1.0
 
-Versão moderna e reescrita em C# .NET 8 do downloader de VOD para listas IPTV M3U.
+Gerenciador moderno de VODs para listas IPTV M3U, desenvolvido em C# .NET 8.
 
-## 🚀 Melhorias
+## 🚀 Funcionalidades
 
 ### Arquitetura
-- ✅ **C# .NET 8** - Substitui VB.NET legado
+- ✅ **C# .NET 8** - Tecnologia moderna da Microsoft
 - ✅ **Arquitetura MVVM** - Separação clara de responsabilidades
 - ✅ **Injeção de Dependências** - Código testável e modular
 - ✅ **Async/Await** - Operações não-bloqueantes
 
 ### Performance
-- ✅ **HttpClient** - Substitui WebClient obsoleto
+- ✅ **HttpClient** - Cliente HTTP moderno e eficiente
 - ✅ **Downloads Paralelos** - Configure múltiplos downloads simultâneos
 - ✅ **Cache de M3U** - Evita downloads repetidos (TTL configurável)
 - ✅ **Resume de Downloads** - Continua downloads interrompidos
@@ -35,7 +35,7 @@ Versão moderna e reescrita em C# .NET 8 do downloader de VOD para listas IPTV M
 ## 📁 Estrutura do Projeto
 
 ```
-M3U_VOD_Downloader/
+MeuGestorVODs/
 ├── Models/
 │   ├── M3UEntry.cs          # Modelo de entrada M3U
 │   ├── DownloadTask.cs      # Modelo de tarefa de download
@@ -51,7 +51,7 @@ M3U_VOD_Downloader/
 │   └── SecurityValidator.cs # Validações de segurança
 ├── MainWindow.xaml          # Interface principal
 ├── App.xaml                 # Configuração da aplicação
-└── M3U_VOD_Downloader.csproj
+└── MeuGestorVODs.csproj
 ```
 
 ## 🔧 Como Compilar
@@ -79,14 +79,14 @@ dotnet publish -c Release -r win-x64 --self-contained true
 
 O arquivo de configuração é salvo automaticamente em:
 ```
-%AppData%\M3UVODDownloader\config.json
+%AppData%\MeuGestorVODs\config.json
 ```
 
 Exemplo:
 ```json
 {
   "M3UUrl": "https://exemplo.com/playlist.m3u",
-  "DownloadPath": "C:\\Users\\Usuario\\Videos\\Downloads",
+  "DownloadPath": "C:\\Users\\Usuario\\Videos\\Meu Gestor VODs",
   "MaxParallelDownloads": 3,
   "CacheTtlMinutes": 30,
   "AutoCheckUpdates": true
@@ -126,7 +126,7 @@ Exemplo:
 
 Logs são salvos em:
 ```
-%AppData%\M3UVODDownloader\logs\app-YYYY-MM-DD.log
+%AppData%\MeuGestorVODs\logs\app-YYYY-MM-DD.log
 ```
 
 ## 🔄 Atualizações
@@ -140,5 +140,5 @@ MIT License - Free to use and modify.
 
 ## 🙏 Sobre
 
-Aplicativo moderno para download de VODs de listas IPTV M3U.
+MEU GESTOR DE VODS - Aplicativo moderno para gerenciamento de VODs de listas IPTV M3U.
 Desenvolvido com C# .NET 8 e arquitetura MVVM.

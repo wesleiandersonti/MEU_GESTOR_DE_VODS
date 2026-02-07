@@ -8,9 +8,9 @@ using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using M3UVODDownloader.Models;
+using MeuGestorVODs.Models;
 
-namespace M3UVODDownloader.Services;
+namespace MeuGestorVODs.Services;
 
 public interface IDownloadService
 {

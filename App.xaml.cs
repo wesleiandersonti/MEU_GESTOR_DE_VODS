@@ -3,11 +3,11 @@ using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog;
-using M3UVODDownloader.Models;
-using M3UVODDownloader.Services;
-using M3UVODDownloader.ViewModels;
+using MeuGestorVODs.Models;
+using MeuGestorVODs.Services;
+using MeuGestorVODs.ViewModels;
 
-namespace M3UVODDownloader;
+namespace MeuGestorVODs;
 
 public partial class App : Application
 {
@@ -28,7 +28,7 @@ public partial class App : Application
         // Logging
         var logPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "M3UVODDownloader",
+            "MeuGestorVODs",
             "logs",
             "app-.log");
 
@@ -48,7 +48,7 @@ public partial class App : Application
         // HttpClient
         services.AddHttpClient("default", client =>
         {
-            client.DefaultRequestHeaders.Add("User-Agent", "M3U-VOD-Downloader/1.0");
+            client.DefaultRequestHeaders.Add("User-Agent", "MeuGestorVODs/1.0");
             client.Timeout = TimeSpan.FromMinutes(5);
         });
 

@@ -7,9 +7,9 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using M3UVODDownloader.Models;
+using MeuGestorVODs.Models;
 
-namespace M3UVODDownloader.Services;
+namespace MeuGestorVODs.Services;
 
 public interface IM3UService
 {
@@ -32,7 +32,7 @@ public class M3UService : IM3UService
         _config = config;
         _cachePath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "M3UVODDownloader",
+            "MeuGestorVODs",
             "cache.m3u");
     }
 

@@ -2,7 +2,7 @@ using System;
 using System.ComponentModel;
 using System.IO;
 
-namespace M3UVODDownloader.Models;
+namespace MeuGestorVODs.Models;
 
 public class DownloadTask : INotifyPropertyChanged
 {

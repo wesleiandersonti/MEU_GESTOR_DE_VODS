@@ -8,10 +8,10 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using M3UVODDownloader.Models;
-using M3UVODDownloader.Services;
+using MeuGestorVODs.Models;
+using MeuGestorVODs.Services;
 
-namespace M3UVODDownloader.ViewModels;
+namespace MeuGestorVODs.ViewModels;
 
 public partial class MainViewModel : ObservableObject
 {

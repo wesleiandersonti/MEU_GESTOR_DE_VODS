@@ -1,6 +1,6 @@
 using System.Windows;
 
-namespace M3UVODDownloader;
+namespace MeuGestorVODs;
 
 public partial class MainWindow : Window
 {
