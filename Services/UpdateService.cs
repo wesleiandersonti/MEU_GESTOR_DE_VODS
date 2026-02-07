@@ -17,8 +17,8 @@ public class UpdateService : IUpdateService
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<UpdateService> _logger;
-    private const string GitHubApiUrl = "https://api.github.com/repos/timtester123/M3U_VOD_Downloader/releases/latest";
-    private const string RepositoryUrl = "https://github.com/timtester123/M3U_VOD_Downloader";
+    private const string GitHubApiUrl = "https://api.github.com/repos/wesleiandersonti/M3U_VOD_Downloader/releases/latest";
+    private const string RepositoryUrl = "https://github.com/wesleiandersonti/M3U_VOD_Downloader";
 
     public UpdateService(HttpClient httpClient, ILogger<UpdateService> logger)
     {

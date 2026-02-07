@@ -136,9 +136,9 @@ Também é possível verificar manualmente via botão "Check for Updates".
 
 ## 📄 Licença
 
-Este projeto mantém a licença original do autor.
+MIT License - Free to use and modify.
 
-## 🙏 Créditos
+## 🙏 Sobre
 
-Versão original por: [timtester123](https://github.com/timtester123)
-Refatoração moderna aplicada com C# .NET 8
+Aplicativo moderno para download de VODs de listas IPTV M3U.
+Desenvolvido com C# .NET 8 e arquitetura MVVM.

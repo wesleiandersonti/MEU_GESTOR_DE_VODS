@@ -258,11 +258,11 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void OpenDonate()
+    private void OpenGitHub()
     {
         var psi = new System.Diagnostics.ProcessStartInfo
         {
-            FileName = "https://timtester.in/donate/",
+            FileName = "https://github.com/wesleiandersonti/M3U_VOD_Downloader",
             UseShellExecute = true
         };
         System.Diagnostics.Process.Start(psi);

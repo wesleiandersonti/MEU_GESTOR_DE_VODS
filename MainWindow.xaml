@@ -274,8 +274,8 @@
                        Margin="0,0,10,0"/>
                 
                 <Button Grid.Column="2" 
-                       Content="Donate" 
-                       Command="{Binding OpenDonateCommand}"
+                       Content="GitHub" 
+                       Command="{Binding OpenGitHubCommand}"
                        Style="{StaticResource ModernButton}"/>
             </Grid>
         </Border>
