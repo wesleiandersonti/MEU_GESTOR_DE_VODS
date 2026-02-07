@@ -15,7 +15,7 @@ AppPublisher={#MyAppPublisher}
 DefaultDirName={autopf}\Meu Gestor de VODs
 DefaultGroupName=MEU GESTOR DE VODS
 DisableProgramGroupPage=yes
-OutputDir=installer-output
+OutputDir=..\installer-output
 OutputBaseFilename=MeuGestorVODs-Setup-{#MyAppVersion}
 Compression=lzma
 SolidCompression=yes
@@ -31,7 +31,7 @@ Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortugue
 Name: "desktopicon"; Description: "Criar atalho na area de trabalho"; GroupDescription: "Atalhos:"
 
 [Files]
-Source: "output\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\output\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\MEU GESTOR DE VODS"; Filename: "{app}\{#MyAppExeName}"
