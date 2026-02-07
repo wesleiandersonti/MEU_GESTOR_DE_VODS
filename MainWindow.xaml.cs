@@ -206,6 +206,43 @@ namespace MeuGestorVODs
             }
         }
 
+        private async void CheckUpdates_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                StatusMessage = "Verificando atualizações...";
+                
+                using var client = new System.Net.Http.HttpClient();
+                client.DefaultRequestHeaders.Add("User-Agent", "MeuGestorVODs");
+                
+                var response = await client.GetAsync("https://api.github.com/repos/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/latest");
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    var content = await response.Content.ReadAsStringAsync();
+                    
+                    // Abre a página de releases no navegador
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/latest",
+                        UseShellExecute = true
+                    });
+                    
+                    StatusMessage = "Página de atualizações aberta";
+                }
+                else
+                {
+                    MessageBox.Show("Não foi possível verificar atualizações. Verifique sua conexão.", "Erro", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    StatusMessage = "Erro ao verificar atualizações";
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Erro ao verificar atualizações: {ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+                StatusMessage = "Erro ao verificar atualizações";
+            }
+        }
+
         private void OpenGitHub_Click(object sender, RoutedEventArgs e)
         {
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo

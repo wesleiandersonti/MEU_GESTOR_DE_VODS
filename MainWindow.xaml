@@ -136,9 +136,11 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Text="{Binding StatusMessage}" VerticalAlignment="Center"/>
-                <Button Grid.Column="1" Content="GitHub" Click="OpenGitHub_Click" Padding="15,5"/>
+                <Button Grid.Column="1" Content="Verificar Atualizações" Click="CheckUpdates_Click" Padding="15,5" Margin="0,0,10,0" Background="#FF9800" Foreground="White"/>
+                <Button Grid.Column="2" Content="GitHub" Click="OpenGitHub_Click" Padding="15,5"/>
             </Grid>
         </Border>
 
