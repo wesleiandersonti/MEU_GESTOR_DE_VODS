@@ -1,63 +1,170 @@
 # MEU GESTOR DE VODS v1.0
 
-Aplicativo Windows para carregar listas IPTV no formato M3U, filtrar VODs e baixar os itens selecionados.
+Gerenciador moderno de VODs para listas IPTV M3U, desenvolvido em C# .NET 8.
 
-## Proposta do projeto
+## Download
 
-Esta versao segue a proposta de manter a experiencia simples da ferramenta original e evoluir com base moderna em C#/.NET 8:
+Versao 1.0.0 - [Baixar aqui](https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/latest)
 
-- carregar URL M3U rapidamente
-- listar e filtrar VODs
-- selecionar em lote e baixar
-- acompanhar progresso dos downloads
-- verificar atualizacoes no GitHub
+## Instalacao
 
-## Status atual (v1.0)
+1. Baixe o arquivo `MEU_GESTOR_DE_VODS.zip` na aba Releases.
+2. Extraia para qualquer pasta.
+3. Execute `MeuGestorVODs.exe`.
 
-Funcionalidades implementadas:
+Nao requer instalacao. Aplicativo portatil.
 
-- carregamento de playlist M3U por URL
-- parse de `#EXTINF` com nome, grupo e link
-- busca/filtro em tempo real
-- selecao em massa (selecionar/desmarcar)
-- download dos itens selecionados com barra de progresso
-- escolha da pasta de destino
-- botao "Verificar Atualizacoes" abrindo `releases/latest`
+## Funcionalidades
 
-## Como usar
+### Arquitetura
 
-1. Informe a URL M3U no campo `URL M3U`.
-2. Clique em `Carregar`.
-3. Use o filtro para localizar os VODs.
-4. Marque os itens desejados.
-5. Clique em `Baixar Selecionados`.
-6. Acompanhe o andamento no painel de downloads.
+- [x] C# .NET 8 - Tecnologia moderna da Microsoft
+- [x] Arquitetura MVVM - Separacao clara de responsabilidades
+- [x] Injecao de Dependencias - Codigo testavel e modular
+- [x] Async/Await - Operacoes nao-bloqueantes
 
-## Download da versao
+### Performance
 
-- Releases: `https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases`
-- Ultima versao: `https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/latest`
+- [x] HttpClient - Cliente HTTP moderno e eficiente
+- [x] Downloads Paralelos - Configure multiplos downloads simultaneos
+- [x] Cache de M3U - Evita downloads repetidos (TTL configuravel)
+- [x] Resume de Downloads - Continua downloads interrompidos
+- [x] Retry com Exponential Backoff - Recuperacao automatica de falhas
 
-## Requisitos
+### Interface
 
-- Windows 10/11
-- .NET 8 (na execucao local)
+- [x] WPF Moderno - Interface clean e responsiva
+- [x] Progresso Individual - Barra de progresso para cada download
+- [x] Filtro em Tempo Real - Busca instantanea na lista
+- [x] DataGrid Avancado - Ordenacao e selecao multipla
 
-## Build local
+### Seguranca
 
-```bash
-dotnet publish -c Release -r win-x64 --self-contained -o output
+- [x] Validacao de URLs - Apenas HTTP/HTTPS permitido
+- [x] Sanitizacao de Paths - Previne path traversal
+- [x] Validacao de Config - Valores seguros por padrao
+
+### Logging
+
+- [x] Serilog - Logs estruturados em arquivo
+- [x] Rotacao Diaria - Arquivos de log organizados
+
+## Estrutura do Projeto
+
+```text
+MeuGestorVODs/
+├── Models/
+│   ├── M3UEntry.cs          # Modelo de entrada M3U
+│   ├── DownloadTask.cs      # Modelo de tarefa de download
+│   └── AppConfig.cs         # Configuracao da aplicacao
+├── Services/
+│   ├── M3UService.cs        # Parsing e cache de M3U
+│   ├── DownloadService.cs   # Logica de download
+│   ├── PlayerService.cs     # Integracao com players
+│   └── UpdateService.cs     # Verificacao de atualizacoes
+├── ViewModels/
+│   └── MainViewModel.cs     # ViewModel principal
+├── Security/
+│   └── SecurityValidator.cs # Validacoes de seguranca
+├── MainWindow.xaml          # Interface principal
+├── App.xaml                 # Configuracao da aplicacao
+└── MeuGestorVODs.csproj
 ```
 
-Executavel gerado em `output/`.
+## Como Compilar
 
-## CI/CD
+### Pre-requisitos
 
-O projeto usa GitHub Actions em `.github/workflows/build.yml` para compilar no Windows e publicar artifact automaticamente.
+- .NET 8 SDK
+- Visual Studio 2022 ou VS Code
 
-## Estrutura principal
+### Comandos
 
-- `MainWindow.xaml`: interface
-- `MainWindow.xaml.cs`: logica da UI
-- `Services.cs`: parse M3U e servicos de download
-- `MeuGestorVODs.csproj`: configuracao do projeto
+```bash
+# Restaurar pacotes
+dotnet restore
+
+# Compilar
+dotnet build
+
+# Executar
+dotnet run
+
+# Publicar (Release)
+dotnet publish -c Release -r win-x64 --self-contained true
+```
+
+## Configuracao
+
+O arquivo de configuracao e salvo automaticamente em:
+
+```text
+%AppData%\MeuGestorVODs\config.json
+```
+
+Exemplo:
+
+```json
+{
+  "M3UUrl": "https://exemplo.com/playlist.m3u",
+  "DownloadPath": "C:\\Users\\Usuario\\Videos\\Meu Gestor VODs",
+  "MaxParallelDownloads": 3,
+  "CacheTtlMinutes": 30,
+  "AutoCheckUpdates": true
+}
+```
+
+## Fluxo de uso
+
+### Download de VODs
+
+1. Cole a URL do arquivo M3U.
+2. Clique em "Load" para carregar a lista.
+3. Selecione os itens desejados.
+4. Clique em "Download Selected".
+5. Acompanhe o progresso individual de cada arquivo.
+
+### Player Integrado
+
+- Selecione um item e clique em "Play Selected".
+- Suporte automatico a VLC, MPV e players do sistema.
+
+### Filtro
+
+- Digite na caixa "Filter" para buscar por nome.
+- Filtro em tempo real na lista.
+
+### Downloads Paralelos
+
+- Configure "Max Parallel Downloads" (1-5).
+- Downloads simultaneos com controle de largura de banda.
+
+## Seguranca
+
+- [x] URLs validadas (apenas HTTP/HTTPS)
+- [x] Sanitizacao de nomes de arquivo
+- [x] Protecao contra path traversal
+- [x] Validacao de esquemas de URL
+- [x] Verificacao de tamanho de paths
+
+## Logs
+
+Logs sao salvos em:
+
+```text
+%AppData%\MeuGestorVODs\logs\app-YYYY-MM-DD.log
+```
+
+## Atualizacoes
+
+O sistema verifica automaticamente atualizacoes na inicializacao.
+Tambem e possivel verificar manualmente via botao "Check for Updates".
+
+## Licenca
+
+Licenca Comercial (paga) - uso mediante aquisicao de licenca.
+
+## Sobre
+
+MEU GESTOR DE VODS - Aplicativo moderno para gerenciamento de VODs de listas IPTV M3U.
+Desenvolvido com C# .NET 8 e arquitetura MVVM.
