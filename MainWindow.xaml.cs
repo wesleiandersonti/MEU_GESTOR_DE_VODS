@@ -2,8 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Reflection;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -17,10 +22,14 @@ namespace MeuGestorVODs
         private string _downloadPath = "";
         private string _filterText = "";
         private string _statusMessage = "Pronto";
+        private string _currentVersionText = "Versao atual: -";
         private bool _isLoading = false;
         private M3UEntry _selectedEntry;
         private const string DownloadStructureFileName = "estrutura_downloads.txt";
+        private const string RepoApiBase = "https://api.github.com/repos/wesleiandersonti/MEU_GESTOR_DE_VODS";
+        private readonly HttpClient _releaseClient = new HttpClient();
         private Dictionary<string, string> _downloadStructure = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        private bool _isUpdateInProgress;
 
         public ObservableCollection<M3UEntry> Entries { get; set; } = new ObservableCollection<M3UEntry>();
         public ObservableCollection<M3UEntry> FilteredEntries { get; set; } = new ObservableCollection<M3UEntry>();
@@ -55,6 +64,12 @@ namespace MeuGestorVODs
             set { _statusMessage = value; OnPropertyChanged(nameof(StatusMessage)); }
         }
 
+        public string CurrentVersionText
+        {
+            get => _currentVersionText;
+            set { _currentVersionText = value; OnPropertyChanged(nameof(CurrentVersionText)); }
+        }
+
         public bool IsLoading
         {
             get => _isLoading;
@@ -78,6 +93,8 @@ namespace MeuGestorVODs
             _downloadService = new DownloadService();
             DownloadPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), "Meu Gestor VODs");
             EnsureAndLoadDownloadStructure();
+            _releaseClient.DefaultRequestHeaders.Add("User-Agent", "MeuGestorVODs");
+            CurrentVersionText = $"Versao atual: {GetCurrentAppVersion()}";
         }
 
         private async void LoadM3U_Click(object sender, RoutedEventArgs e)
@@ -368,39 +385,376 @@ namespace MeuGestorVODs
 
         private async void CheckUpdates_Click(object sender, RoutedEventArgs e)
         {
+            if (_isUpdateInProgress)
+            {
+                return;
+            }
+
             try
             {
-                StatusMessage = "Verificando atualizações...";
-                
-                using var client = new System.Net.Http.HttpClient();
-                client.DefaultRequestHeaders.Add("User-Agent", "MeuGestorVODs");
-                
-                var response = await client.GetAsync("https://api.github.com/repos/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/latest");
-                
-                if (response.IsSuccessStatusCode)
+                _isUpdateInProgress = true;
+                IsLoading = true;
+
+                var currentVersion = GetCurrentAppVersion();
+                CurrentVersionText = $"Versao atual: {currentVersion}";
+                StatusMessage = "Verificando atualizacoes...";
+
+                var latest = await GetLatestReleaseAsync();
+                if (latest == null)
                 {
-                    var content = await response.Content.ReadAsStringAsync();
-                    
-                    // Abre a página de releases no navegador
-                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                    {
-                        FileName = "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/latest",
-                        UseShellExecute = true
-                    });
-                    
-                    StatusMessage = "Página de atualizações aberta";
+                    System.Windows.MessageBox.Show("Nao foi possivel obter informacoes da ultima versao.", "Atualizacao", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    StatusMessage = "Falha ao verificar atualizacoes";
+                    return;
                 }
-                else
+
+                if (!IsNewerRelease(latest.TagName, currentVersion))
                 {
-                    System.Windows.MessageBox.Show("Não foi possível verificar atualizações. Verifique sua conexão.", "Erro", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    StatusMessage = "Erro ao verificar atualizações";
+                    System.Windows.MessageBox.Show($"Voce ja esta na versao mais recente ({currentVersion}).", "Atualizacao", MessageBoxButton.OK, MessageBoxImage.Information);
+                    StatusMessage = "Aplicativo ja esta atualizado";
+                    return;
                 }
+
+                var confirm = System.Windows.MessageBox.Show(
+                    $"Nova versao encontrada: {latest.TagName}.\n\nDeseja baixar e atualizar agora automaticamente?",
+                    "Atualizacao disponivel",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (confirm != MessageBoxResult.Yes)
+                {
+                    StatusMessage = "Atualizacao cancelada pelo usuario";
+                    return;
+                }
+
+                await InstallReleaseAsync(latest, "Atualizacao");
             }
             catch (Exception ex)
             {
-                System.Windows.MessageBox.Show($"Erro ao verificar atualizações: {ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
-                StatusMessage = "Erro ao verificar atualizações";
+                System.Windows.MessageBox.Show($"Erro ao verificar/atualizar: {ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+                StatusMessage = "Erro na atualizacao";
             }
+            finally
+            {
+                IsLoading = false;
+                _isUpdateInProgress = false;
+            }
+        }
+
+        private async void RollbackVersion_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isUpdateInProgress)
+            {
+                return;
+            }
+
+            try
+            {
+                _isUpdateInProgress = true;
+                IsLoading = true;
+                StatusMessage = "Buscando versoes anteriores...";
+
+                var releases = await GetStableReleasesAsync();
+                if (releases.Count == 0)
+                {
+                    System.Windows.MessageBox.Show("Nenhuma release encontrada.", "Rollback", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var currentVersion = GetCurrentAppVersion();
+                var older = releases.Where(r => CompareReleaseTags(r.TagName, currentVersion) < 0).ToList();
+                if (older.Count == 0)
+                {
+                    older = releases.Skip(1).ToList();
+                }
+
+                if (older.Count == 0)
+                {
+                    System.Windows.MessageBox.Show("Nao ha versoes anteriores disponiveis para rollback.", "Rollback", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                var preview = string.Join(", ", older.Take(6).Select(x => x.TagName));
+                var suggested = older.First().TagName;
+                var chosenTag = PromptForText(
+                    $"Versoes anteriores disponiveis (exemplos): {preview}\n\nDigite a versao desejada (ex: {suggested}):",
+                    "Rollback de versao",
+                    suggested);
+
+                if (string.IsNullOrWhiteSpace(chosenTag))
+                {
+                    StatusMessage = "Rollback cancelado pelo usuario";
+                    return;
+                }
+
+                var selected = older.FirstOrDefault(r =>
+                    string.Equals(NormalizeTag(r.TagName), NormalizeTag(chosenTag), StringComparison.OrdinalIgnoreCase));
+
+                if (selected == null)
+                {
+                    System.Windows.MessageBox.Show("Versao nao encontrada entre as releases disponiveis.", "Rollback", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    StatusMessage = "Versao informada nao encontrada";
+                    return;
+                }
+
+                var confirm = System.Windows.MessageBox.Show(
+                    $"Deseja voltar para a versao {selected.TagName}?",
+                    "Confirmar rollback",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Question);
+
+                if (confirm != MessageBoxResult.Yes)
+                {
+                    StatusMessage = "Rollback cancelado pelo usuario";
+                    return;
+                }
+
+                await InstallReleaseAsync(selected, "Rollback");
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show($"Erro no rollback: {ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+                StatusMessage = "Erro no rollback";
+            }
+            finally
+            {
+                IsLoading = false;
+                _isUpdateInProgress = false;
+            }
+        }
+
+        private async Task InstallReleaseAsync(GitHubRelease release, string operation)
+        {
+            var installer = release.Assets.FirstOrDefault(a =>
+                a.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) &&
+                a.Name.Contains("Setup", StringComparison.OrdinalIgnoreCase));
+
+            if (installer == null)
+            {
+                throw new InvalidOperationException("Nao foi encontrado instalador .exe na release selecionada.");
+            }
+
+            var downloadPath = Path.Combine(Path.GetTempPath(), "MeuGestorVODs", installer.Name);
+            Directory.CreateDirectory(Path.GetDirectoryName(downloadPath)!);
+
+            StatusMessage = $"{operation}: baixando {release.TagName}...";
+            await DownloadFileWithProgressAsync(installer.BrowserDownloadUrl, downloadPath);
+
+            StatusMessage = $"{operation}: abrindo instalador...";
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = downloadPath,
+                UseShellExecute = true
+            });
+
+            System.Windows.MessageBox.Show(
+                $"Instalador da versao {release.TagName} aberto com sucesso.\n\nFinalize o assistente para concluir.",
+                operation,
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+
+            Application.Current.Shutdown();
+        }
+
+        private async Task DownloadFileWithProgressAsync(string url, string outputPath)
+        {
+            using var response = await _releaseClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+            response.EnsureSuccessStatusCode();
+
+            var totalBytes = response.Content.Headers.ContentLength ?? -1L;
+            await using var input = await response.Content.ReadAsStreamAsync();
+            await using var output = new FileStream(outputPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true);
+
+            var buffer = new byte[81920];
+            long readTotal = 0;
+            while (true)
+            {
+                var read = await input.ReadAsync(buffer.AsMemory(0, buffer.Length));
+                if (read == 0)
+                {
+                    break;
+                }
+
+                await output.WriteAsync(buffer.AsMemory(0, read));
+                readTotal += read;
+
+                if (totalBytes > 0)
+                {
+                    var pct = (int)Math.Round((double)readTotal / totalBytes * 100);
+                    StatusMessage = $"Baixando atualizacao... {pct}%";
+                }
+            }
+        }
+
+        private async Task<GitHubRelease?> GetLatestReleaseAsync()
+        {
+            using var response = await _releaseClient.GetAsync($"{RepoApiBase}/releases/latest");
+            response.EnsureSuccessStatusCode();
+            var json = await response.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<GitHubRelease>(json);
+        }
+
+        private async Task<List<GitHubRelease>> GetStableReleasesAsync()
+        {
+            using var response = await _releaseClient.GetAsync($"{RepoApiBase}/releases?per_page=30");
+            response.EnsureSuccessStatusCode();
+            var json = await response.Content.ReadAsStringAsync();
+            var all = JsonSerializer.Deserialize<List<GitHubRelease>>(json) ?? new List<GitHubRelease>();
+            return all.Where(r => !r.Draft && !r.Prerelease).ToList();
+        }
+
+        private static bool IsNewerRelease(string releaseTag, string currentVersion)
+        {
+            var releaseVersion = ParseVersion(NormalizeTag(releaseTag));
+            var installedVersion = ParseVersion(NormalizeTag(currentVersion));
+
+            if (releaseVersion != null && installedVersion != null)
+            {
+                return releaseVersion > installedVersion;
+            }
+
+            return !string.Equals(NormalizeTag(releaseTag), NormalizeTag(currentVersion), StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static int CompareReleaseTags(string leftTag, string rightTag)
+        {
+            var left = ParseVersion(NormalizeTag(leftTag));
+            var right = ParseVersion(NormalizeTag(rightTag));
+
+            if (left != null && right != null)
+            {
+                return left.CompareTo(right);
+            }
+
+            return string.Compare(NormalizeTag(leftTag), NormalizeTag(rightTag), StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static Version? ParseVersion(string value)
+        {
+            var cleaned = value.Trim();
+            var idx = cleaned.IndexOf('-', StringComparison.Ordinal);
+            if (idx > 0)
+            {
+                cleaned = cleaned[..idx];
+            }
+
+            return Version.TryParse(cleaned, out var parsed) ? parsed : null;
+        }
+
+        private static string NormalizeTag(string tag)
+        {
+            return tag.Trim().TrimStart('v', 'V');
+        }
+
+        private string GetCurrentAppVersion()
+        {
+            var versionFile = Path.Combine(AppContext.BaseDirectory, "version.txt");
+            if (File.Exists(versionFile))
+            {
+                var txt = File.ReadAllText(versionFile).Trim();
+                if (!string.IsNullOrWhiteSpace(txt))
+                {
+                    return txt;
+                }
+            }
+
+            var processPath = Environment.ProcessPath;
+            if (!string.IsNullOrWhiteSpace(processPath) && File.Exists(processPath))
+            {
+                var info = FileVersionInfo.GetVersionInfo(processPath);
+                if (!string.IsNullOrWhiteSpace(info.ProductVersion))
+                {
+                    return info.ProductVersion!;
+                }
+            }
+
+            return Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "1.0.0";
+        }
+
+        private static string? PromptForText(string message, string title, string defaultValue)
+        {
+            var input = new TextBox
+            {
+                Margin = new Thickness(0, 10, 0, 10),
+                Text = defaultValue,
+                MinWidth = 320
+            };
+
+            var okButton = new Button
+            {
+                Content = "OK",
+                Width = 90,
+                Margin = new Thickness(0, 0, 8, 0),
+                IsDefault = true
+            };
+
+            var cancelButton = new Button
+            {
+                Content = "Cancelar",
+                Width = 90,
+                IsCancel = true
+            };
+
+            var buttons = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                HorizontalAlignment = HorizontalAlignment.Right
+            };
+            buttons.Children.Add(okButton);
+            buttons.Children.Add(cancelButton);
+
+            var panel = new StackPanel
+            {
+                Margin = new Thickness(16)
+            };
+            panel.Children.Add(new TextBlock
+            {
+                Text = message,
+                TextWrapping = TextWrapping.Wrap
+            });
+            panel.Children.Add(input);
+            panel.Children.Add(buttons);
+
+            var dialog = new Window
+            {
+                Title = title,
+                Content = panel,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                SizeToContent = SizeToContent.WidthAndHeight,
+                ResizeMode = ResizeMode.NoResize,
+                WindowStyle = WindowStyle.ToolWindow,
+                Owner = Application.Current?.MainWindow
+            };
+
+            okButton.Click += (_, __) => dialog.DialogResult = true;
+
+            return dialog.ShowDialog() == true ? input.Text.Trim() : null;
+        }
+
+        private sealed class GitHubRelease
+        {
+            [JsonPropertyName("tag_name")]
+            public string TagName { get; set; } = string.Empty;
+
+            [JsonPropertyName("name")]
+            public string Name { get; set; } = string.Empty;
+
+            [JsonPropertyName("draft")]
+            public bool Draft { get; set; }
+
+            [JsonPropertyName("prerelease")]
+            public bool Prerelease { get; set; }
+
+            [JsonPropertyName("assets")]
+            public List<GitHubAsset> Assets { get; set; } = new List<GitHubAsset>();
+        }
+
+        private sealed class GitHubAsset
+        {
+            [JsonPropertyName("name")]
+            public string Name { get; set; } = string.Empty;
+
+            [JsonPropertyName("browser_download_url")]
+            public string BrowserDownloadUrl { get; set; } = string.Empty;
         }
 
         private void OpenGitHub_Click(object sender, RoutedEventArgs e)

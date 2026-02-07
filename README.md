@@ -202,8 +202,9 @@ Logs sao salvos em:
 
 ## 🔄 Atualizacoes
 
-O sistema verifica automaticamente atualizacoes na inicializacao.
-Tambem e possivel verificar manualmente via botao "Check for Updates".
+- O botao `Verificar Atualizacoes` consulta a ultima release no GitHub e, se houver versao mais nova, baixa e abre o instalador automaticamente.
+- A barra inferior exibe a `Versao atual` instalada.
+- O botao `Voltar Versao` permite escolher uma release anterior para rollback automatico.
 
 ## 📄 Licenca
 
