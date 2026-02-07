@@ -4,9 +4,8 @@ namespace MeuGestorVODs;
 
 public partial class MainWindow : Window
 {
-    public MainWindow(ViewModels.MainViewModel viewModel)
+    public MainWindow()
     {
         InitializeComponent();
-        DataContext = viewModel;
     }
 }
