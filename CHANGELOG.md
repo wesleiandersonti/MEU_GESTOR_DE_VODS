@@ -30,6 +30,16 @@ e este projeto adere a [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.0.14] - 2026-02-08
+
+### 🐛 Corrigido (Fixes)
+- **Título da janela atualizado dinamicamente**
+  - Remove versão hardcoded "v1.0" do título
+  - Adiciona propriedade WindowTitle com binding dinâmico
+  - Título agora mostra versão correta: "MEU GESTOR DE VODS v1.0.14"
+
+---
+
 ## [1.0.13] - 2026-02-08
 
 ### 🐛 Corrigido (Fixes)
