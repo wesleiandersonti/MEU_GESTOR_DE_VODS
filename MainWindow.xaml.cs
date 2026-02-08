@@ -210,7 +210,7 @@ namespace MeuGestorVODs
             }
         }
 
-        private async void LoadM3UUrlHistory()
+        private async Task LoadM3UUrlHistory()
         {
             if (_databaseService == null || M3UUrlComboBox == null) return;
 
