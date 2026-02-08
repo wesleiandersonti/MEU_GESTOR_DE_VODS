@@ -12,6 +12,7 @@ Gerenciador de VODs para listas IPTV M3U em C# .NET 8 (WPF).
 - **docs/PROJECT_ARCHITECTURE.md** - Arquitetura completa do sistema
 - **docs/DATABASE_SCHEMA.md** - Documentacao do banco SQLite
 - **docs/QUICK_START.md** - Guia rapido de desenvolvimento
+- **docs/VERSIONAMENTO.md** - Guia de versionamento SemVer
 - **docs/PLANO_TECNICO_POR_ARQUIVO_CLASSE.md** - Detalhes tecnicos
 
 ### Referencias

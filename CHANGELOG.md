@@ -2,6 +2,29 @@
 
 Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 
+## 📋 Sobre Versionamento
+
+Este projeto segue **[Semantic Versioning (SemVer)](https://semver.org/lang/pt-BR/)**:
+
+```
+MAJOR.MINOR.PATCH
+│ │ │
+│ │ └─ PATCH: Correções de bugs (1.0.0 → 1.0.1)
+│ └── MINOR: Novas funcionalidades (1.0.99 → 1.1.0)
+└── MAJOR: Mudanças incompatíveis (1.x.x → 2.0.0)
+```
+
+**IMPORTANTE:** Não existe limite de 99! Pode ter:
+- ✅ 1.0.150 (correções)
+- ✅ 1.0.999 (correções)
+- ✅ 1.15.0 (funcionalidades)
+
+**Só mude MINOR quando adicionar NOVA FUNCIONALIDADE, não por causa do número!**
+
+📖 Veja o guia completo em: `docs/VERSIONAMENTO.md`
+
+---
+
 O formato é baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/),
 e este projeto adere a [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
