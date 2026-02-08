@@ -30,6 +30,17 @@ e este projeto adere a [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.0.12] - 2026-02-08
+
+### 🐛 Corrigido (Fixes)
+- **Correção de layout da interface**
+  - Corrige sobreposição do Main Content com Status Bar
+  - Reduz tamanho dos botões da barra inferior (menores e mais compactos)
+  - Corrige Grid.Row dos elementos principais
+  - Ajusta Loading Overlay para cobrir toda a interface
+
+---
+
 ## [1.0.11] - 2026-02-08
 
 ### 🎉 Adicionado (Features)
