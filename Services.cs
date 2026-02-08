@@ -2,13 +2,51 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
+using System.Net;
+using System.ComponentModel;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace MeuGestorVODs;
 
-public class M3UEntry
+public enum ItemStatus
 {
+    Checking,
+    Ok,
+    Error
+}
+
+public enum ServerQuality
+{
+    Excelente,
+    Bom,
+    Regular,
+    Ruim
+}
+
+public class ServerScoreResult
+{
+    public string Host { get; set; } = string.Empty;
+    public int TotalLinks { get; set; }
+    public int OnlineLinks { get; set; }
+    public int OfflineLinks { get; set; }
+    public double SuccessRate { get; set; }
+    public double AverageResponseMs { get; set; }
+    public double Score { get; set; }
+    public ServerQuality Quality { get; set; } = ServerQuality.Regular;
+}
+
+public class M3UEntry : INotifyPropertyChanged
+{
+    private bool _isSelected;
+    private ItemStatus _checkStatus = ItemStatus.Error;
+    private bool _isDuplicate;
+    private string _normalizedUrl = string.Empty;
+    private string _serverHost = string.Empty;
+    private double _responseTimeMs;
+    private DateTime? _lastCheckedAt;
+    private string _checkDetails = string.Empty;
+
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string Url { get; set; } = string.Empty;
@@ -17,7 +55,107 @@ public class M3UEntry
     public string SubCategory { get; set; } = "Geral";
     public string LogoUrl { get; set; } = string.Empty;
     public string TvgId { get; set; } = string.Empty;
-    public bool IsSelected { get; set; }
+
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected == value) return;
+            _isSelected = value;
+            OnPropertyChanged(nameof(IsSelected));
+        }
+    }
+
+    public ItemStatus CheckStatus
+    {
+        get => _checkStatus;
+        set
+        {
+            if (_checkStatus == value) return;
+            _checkStatus = value;
+            OnPropertyChanged(nameof(CheckStatus));
+            OnPropertyChanged(nameof(StatusText));
+            OnPropertyChanged(nameof(IsOnline));
+        }
+    }
+
+    public bool IsDuplicate
+    {
+        get => _isDuplicate;
+        set
+        {
+            if (_isDuplicate == value) return;
+            _isDuplicate = value;
+            OnPropertyChanged(nameof(IsDuplicate));
+            OnPropertyChanged(nameof(DuplicateText));
+        }
+    }
+
+    public string NormalizedUrl
+    {
+        get => _normalizedUrl;
+        set
+        {
+            if (_normalizedUrl == value) return;
+            _normalizedUrl = value;
+            OnPropertyChanged(nameof(NormalizedUrl));
+        }
+    }
+
+    public string ServerHost
+    {
+        get => _serverHost;
+        set
+        {
+            if (_serverHost == value) return;
+            _serverHost = value;
+            OnPropertyChanged(nameof(ServerHost));
+        }
+    }
+
+    public double ResponseTimeMs
+    {
+        get => _responseTimeMs;
+        set
+        {
+            if (Math.Abs(_responseTimeMs - value) < 0.01) return;
+            _responseTimeMs = value;
+            OnPropertyChanged(nameof(ResponseTimeMs));
+        }
+    }
+
+    public DateTime? LastCheckedAt
+    {
+        get => _lastCheckedAt;
+        set
+        {
+            if (_lastCheckedAt == value) return;
+            _lastCheckedAt = value;
+            OnPropertyChanged(nameof(LastCheckedAt));
+        }
+    }
+
+    public string CheckDetails
+    {
+        get => _checkDetails;
+        set
+        {
+            if (_checkDetails == value) return;
+            _checkDetails = value;
+            OnPropertyChanged(nameof(CheckDetails));
+        }
+    }
+
+    public bool IsOnline => CheckStatus == ItemStatus.Ok;
+    public string DuplicateText => IsDuplicate ? "Sim" : "Nao";
+    public string StatusText => CheckStatus switch
+    {
+        ItemStatus.Checking => "CHECKING",
+        ItemStatus.Ok => "ONLINE",
+        ItemStatus.Error => "OFFLINE",
+        _ => "-"
+    };
 
     public string GroupDisplay => $"{Category} | {SubCategory}";
     public string GroupKey => $"{Category}|{SubCategory}";
@@ -34,6 +172,13 @@ public class M3UEntry
 
             return string.IsNullOrWhiteSpace(name) ? "unknown" : name;
         }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    private void OnPropertyChanged(string propertyName)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }
 
@@ -190,6 +335,65 @@ public class DownloadService
             {
                 progress.Report((double)totalRead / totalBytes * 100);
             }
+        }
+    }
+}
+
+public class LinkCheckResult
+{
+    public bool IsOnline { get; set; }
+    public string Details { get; set; } = string.Empty;
+}
+
+public class LinkHealthService
+{
+    private readonly HttpClient _httpClient;
+
+    public LinkHealthService()
+    {
+        _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(12) };
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", "MeuGestorVODs-LinkChecker/1.0");
+    }
+
+    public async Task<LinkCheckResult> CheckAsync(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return new LinkCheckResult { IsOnline = false, Details = "URL vazia" };
+        }
+
+        if (url.StartsWith("[LOCAL]", StringComparison.OrdinalIgnoreCase))
+        {
+            return new LinkCheckResult { IsOnline = true, Details = "Arquivo local" };
+        }
+
+        try
+        {
+            using var headRequest = new HttpRequestMessage(HttpMethod.Head, url);
+            using var headResponse = await _httpClient.SendAsync(headRequest, HttpCompletionOption.ResponseHeadersRead);
+            if ((int)headResponse.StatusCode < 400)
+            {
+                return new LinkCheckResult { IsOnline = true, Details = $"HEAD {(int)headResponse.StatusCode}" };
+            }
+
+            if (headResponse.StatusCode == HttpStatusCode.MethodNotAllowed ||
+                headResponse.StatusCode == HttpStatusCode.NotImplemented)
+            {
+                using var getRequest = new HttpRequestMessage(HttpMethod.Get, url);
+                using var getResponse = await _httpClient.SendAsync(getRequest, HttpCompletionOption.ResponseHeadersRead);
+                if ((int)getResponse.StatusCode < 400)
+                {
+                    return new LinkCheckResult { IsOnline = true, Details = $"GET {(int)getResponse.StatusCode}" };
+                }
+
+                return new LinkCheckResult { IsOnline = false, Details = $"GET {(int)getResponse.StatusCode}" };
+            }
+
+            return new LinkCheckResult { IsOnline = false, Details = $"HEAD {(int)headResponse.StatusCode}" };
+        }
+        catch (Exception ex)
+        {
+            return new LinkCheckResult { IsOnline = false, Details = ex.Message };
         }
     }
 }

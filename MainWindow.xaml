@@ -27,6 +27,7 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <!-- M3U URL -->
@@ -37,12 +38,14 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="URL M3u ou M3u8:" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold"/>
-                <Button Grid.Column="1" Content="Analisar link" Click="LoadM3U_Click" Padding="15,5" Margin="0,0,5,0" Background="#4CAF50" Foreground="White" FontWeight="Bold"/>
+                <Button Grid.Column="1" Content="Carregar" Click="LoadM3U_Click" Padding="15,5" Margin="0,0,5,0" Background="#4CAF50" Foreground="White" FontWeight="Bold"/>
                 <ComboBox Grid.Column="2" x:Name="M3UUrlComboBox" IsEditable="True" Text="{Binding M3UUrl, UpdateSourceTrigger=PropertyChanged}" Padding="5"/>
                 <Button Grid.Column="3" Content="Histórico" Click="ShowUrlHistory_Click" Padding="12,5" Margin="5,0,0,0" Background="#2196F3" Foreground="White"/>
                 <Button Grid.Column="4" Content="Limpar Offline" Click="ClearOfflineUrls_Click" Padding="12,5" Margin="5,0,0,0" Background="#F44336" Foreground="White"/>
+                <Button Grid.Column="5" Content="Analisar Link" Click="AnalyzeLinks_Click" Padding="12,5" Margin="5,0,0,0" Background="#3F51B5" Foreground="White" FontWeight="SemiBold"/>
             </Grid>
 
             <!-- Download Path -->
@@ -76,9 +79,31 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" SharedSizeGroup="Label"/>
                     <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="Filtrar:" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold"/>
                 <TextBox Grid.Column="1" Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}" Padding="5"/>
+                <TextBlock Grid.Column="2" Text="Resultado:" VerticalAlignment="Center" Margin="10,0,6,0" FontWeight="SemiBold"/>
+                <ComboBox Grid.Column="3" Width="140" ItemsSource="{Binding AnalysisFilterOptions}" SelectedItem="{Binding SelectedAnalysisFilter}" Padding="4"/>
+            </Grid>
+
+            <!-- IPTV Checker Progress -->
+            <Grid Grid.Row="4" Margin="0,6,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="Label"/>
+                    <ColumnDefinition Width="220"/>
+                    <ColumnDefinition Width="220"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Checker:" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold"/>
+                <ProgressBar Grid.Column="1" Height="16" Value="{Binding AnalysisProgressValue}" Maximum="100" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="2" Text="{Binding AnalysisProgressText}" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="#333"/>
+                <TextBlock Grid.Column="3" Text="{Binding AnalysisSummaryText}" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="#333" TextTrimming="CharacterEllipsis"/>
+                <Button Grid.Column="4" Content="Remover Duplicados" Click="RemoveDuplicates_Click" Padding="10,4" Margin="8,0,0,0"/>
+                <Button Grid.Column="5" Content="Exportar Resultado" Click="ExportAnalysis_Click" Padding="10,4" Margin="8,0,0,0" Background="#009688" Foreground="White"/>
             </Grid>
         </Grid>
 
@@ -115,10 +140,30 @@
                              VirtualizingPanel.IsVirtualizing="True"
                              VirtualizingPanel.VirtualizationMode="Recycling"
                              ScrollViewer.CanContentScroll="True">
+                        <DataGrid.RowStyle>
+                            <Style TargetType="DataGridRow">
+                                <Setter Property="Background" Value="White"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CheckStatus}" Value="{x:Static local:ItemStatus.Checking}">
+                                        <Setter Property="Background" Value="#E3F2FD"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding CheckStatus}" Value="{x:Static local:ItemStatus.Ok}">
+                                        <Setter Property="Background" Value="#E8F5E9"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding CheckStatus}" Value="{x:Static local:ItemStatus.Error}">
+                                        <Setter Property="Background" Value="#FFEBEE"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.RowStyle>
                         <DataGrid.Columns>
                             <DataGridCheckBoxColumn Header="" Binding="{Binding IsSelected, Mode=TwoWay}" Width="30"/>
                             <DataGridTextColumn Header="Nome" Binding="{Binding Name}" Width="*"/>
-                            <DataGridTextColumn Header="Grupo (Categoria | Subcategoria)" Binding="{Binding GroupDisplay}" Width="260"/>
+                            <DataGridTextColumn Header="Grupo (Categoria | Subcategoria)" Binding="{Binding GroupDisplay}" Width="230"/>
+                            <DataGridTextColumn Header="Status" Binding="{Binding StatusText}" Width="90"/>
+                            <DataGridTextColumn Header="Servidor" Binding="{Binding ServerHost}" Width="150"/>
+                            <DataGridTextColumn Header="Latência (ms)" Binding="{Binding ResponseTimeMs, StringFormat={}{0:F0}}" Width="95"/>
+                            <DataGridTextColumn Header="Duplicado" Binding="{Binding DuplicateText}" Width="85"/>
                         </DataGrid.Columns>
                     </DataGrid>
 
@@ -151,7 +196,7 @@
                 </Grid>
             </Border>
 
-            <!-- Right Panel - Downloads -->
+            <!-- Right Panel - Downloads e Score -->
             <Border Grid.Column="2" BorderBrush="#CCCCCC" BorderThickness="1">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -159,27 +204,70 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <TextBlock Grid.Row="0" Text="Downloads" FontWeight="Bold" FontSize="14" Margin="10"/>
+                    <TextBlock Grid.Row="0" Text="Monitoramento" FontWeight="Bold" FontSize="14" Margin="10"/>
 
-                    <ScrollViewer Grid.Row="1">
-                        <ItemsControl ItemsSource="{Binding Downloads}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border BorderBrush="#E0E0E0" BorderThickness="0,0,0,1" Padding="10">
-                                        <StackPanel>
-                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                                            <ProgressBar Value="{Binding Progress}" Maximum="100" Height="15" Margin="0,5"/>
-                                            <Grid>
-                                                <TextBlock Text="{Binding Status}" FontSize="11" Foreground="Gray"/>
-                                                <TextBlock Text="{Binding Progress, StringFormat='{}{0:F0}%'}" FontSize="11" 
-                                                          HorizontalAlignment="Right"/>
-                                            </Grid>
-                                        </StackPanel>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
+                    <TabControl Grid.Row="1" Margin="6">
+                        <TabItem Header="Downloads">
+                            <ScrollViewer>
+                                <ItemsControl ItemsSource="{Binding Downloads}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border BorderBrush="#E0E0E0" BorderThickness="0,0,0,1" Padding="10">
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                                    <ProgressBar Value="{Binding Progress}" Maximum="100" Height="15" Margin="0,5"/>
+                                                    <Grid>
+                                                        <TextBlock Text="{Binding Status}" FontSize="11" Foreground="Gray"/>
+                                                        <TextBlock Text="{Binding Progress, StringFormat='{}{0:F0}%'}" FontSize="11" 
+                                                                  HorizontalAlignment="Right"/>
+                                                    </Grid>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </TabItem>
+                        <TabItem Header="Score Servidores">
+                            <DataGrid ItemsSource="{Binding ServerScores}"
+                                      AutoGenerateColumns="False"
+                                      CanUserAddRows="False"
+                                      IsReadOnly="True"
+                                      GridLinesVisibility="Horizontal"
+                                      EnableRowVirtualization="True"
+                                      VirtualizingPanel.IsVirtualizing="True"
+                                      VirtualizingPanel.VirtualizationMode="Recycling">
+                                <DataGrid.RowStyle>
+                                    <Style TargetType="DataGridRow">
+                                        <Setter Property="Background" Value="White"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Quality}" Value="{x:Static local:ServerQuality.Excelente}">
+                                                <Setter Property="Background" Value="#E8F5E9"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Quality}" Value="{x:Static local:ServerQuality.Bom}">
+                                                <Setter Property="Background" Value="#F1F8E9"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Quality}" Value="{x:Static local:ServerQuality.Regular}">
+                                                <Setter Property="Background" Value="#FFF8E1"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Quality}" Value="{x:Static local:ServerQuality.Ruim}">
+                                                <Setter Property="Background" Value="#FFEBEE"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGrid.RowStyle>
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Servidor" Binding="{Binding Host}" Width="*"/>
+                                    <DataGridTextColumn Header="Score" Binding="{Binding Score, StringFormat={}{0:F1}}" Width="65"/>
+                                    <DataGridTextColumn Header="Qualidade" Binding="{Binding Quality}" Width="85"/>
+                                    <DataGridTextColumn Header="Online" Binding="{Binding OnlineLinks}" Width="55"/>
+                                    <DataGridTextColumn Header="Offline" Binding="{Binding OfflineLinks}" Width="55"/>
+                                    <DataGridTextColumn Header="Taxa %" Binding="{Binding SuccessRate, StringFormat={}{0:F1}}" Width="65"/>
+                                    <DataGridTextColumn Header="Resp. ms" Binding="{Binding AverageResponseMs, StringFormat={}{0:F0}}" Width="70"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </TabItem>
+                    </TabControl>
                 </Grid>
             </Border>
         </Grid>

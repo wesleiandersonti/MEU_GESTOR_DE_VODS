@@ -131,6 +131,58 @@ namespace MeuGestorVODs.Repositories
                     CREATE INDEX IF NOT EXISTS idx_m3uurl_online ON M3uUrlHistory(IsOnline);
                     CREATE INDEX IF NOT EXISTS idx_m3uurl_checked ON M3uUrlHistory(LastChecked);
                 ");
+
+                connection.Execute(@"
+                    CREATE TABLE IF NOT EXISTS OfflineUrlArchive (
+                        Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        Url TEXT UNIQUE NOT NULL,
+                        Name TEXT,
+                        FirstDetectedOfflineAt DATETIME NOT NULL,
+                        LastCheckAt DATETIME NOT NULL,
+                        RetryCount INTEGER NOT NULL DEFAULT 0,
+                        NextRetryAt DATETIME NOT NULL,
+                        LastError TEXT
+                    );
+
+                    CREATE INDEX IF NOT EXISTS idx_offlinearchive_url ON OfflineUrlArchive(Url);
+                    CREATE INDEX IF NOT EXISTS idx_offlinearchive_nextretry ON OfflineUrlArchive(NextRetryAt);
+                ");
+
+                connection.Execute(@"
+                    CREATE TABLE IF NOT EXISTS StreamCheckLog (
+                        Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        Url TEXT NOT NULL,
+                        NormalizedUrl TEXT,
+                        ServerHost TEXT,
+                        Status TEXT NOT NULL,
+                        ResponseTimeMs REAL,
+                        IsDuplicate BOOLEAN DEFAULT 0,
+                        CheckedAt DATETIME NOT NULL,
+                        Details TEXT
+                    );
+
+                    CREATE INDEX IF NOT EXISTS idx_streamchecklog_checkedat ON StreamCheckLog(CheckedAt);
+                    CREATE INDEX IF NOT EXISTS idx_streamchecklog_serverhost ON StreamCheckLog(ServerHost);
+                    CREATE INDEX IF NOT EXISTS idx_streamchecklog_status ON StreamCheckLog(Status);
+                ");
+
+                connection.Execute(@"
+                    CREATE TABLE IF NOT EXISTS ServerScoreSnapshot (
+                        Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        ServerHost TEXT NOT NULL,
+                        Score REAL NOT NULL,
+                        Quality TEXT NOT NULL,
+                        SuccessRate REAL NOT NULL,
+                        AverageResponseMs REAL NOT NULL,
+                        TotalLinks INTEGER NOT NULL,
+                        OnlineLinks INTEGER NOT NULL,
+                        OfflineLinks INTEGER NOT NULL,
+                        AnalyzedAt DATETIME NOT NULL
+                    );
+
+                    CREATE INDEX IF NOT EXISTS idx_serverscore_analyzedat ON ServerScoreSnapshot(AnalyzedAt);
+                    CREATE INDEX IF NOT EXISTS idx_serverscore_serverhost ON ServerScoreSnapshot(ServerHost);
+                ");
             }
         }
 
@@ -510,6 +562,180 @@ namespace MeuGestorVODs.Repositories
                     FailCount = FailCount + CASE WHEN @IsOnline = 0 THEN 1 ELSE 0 END
                 WHERE Url = @Url
             ", new { Url = url, IsOnline = isOnline, EntryCount = entryCount });
+        }
+
+        public async Task EnsureOfflineArchivedAsync(string url, string? name, string? lastError, DateTime checkedAt)
+        {
+            using var connection = _db.CreateConnection();
+            var updated = await connection.ExecuteAsync(@"
+                UPDATE OfflineUrlArchive
+                SET Name = COALESCE(@Name, Name),
+                    LastCheckAt = @CheckedAt,
+                    LastError = @LastError
+                WHERE Url = @Url
+            ", new { Url = url, Name = name, CheckedAt = checkedAt, LastError = lastError });
+
+            if (updated == 0)
+            {
+                await connection.ExecuteAsync(@"
+                    INSERT INTO OfflineUrlArchive
+                    (Url, Name, FirstDetectedOfflineAt, LastCheckAt, RetryCount, NextRetryAt, LastError)
+                    VALUES
+                    (@Url, @Name, @CheckedAt, @CheckedAt, 0, @NextRetryAt, @LastError)
+                ", new
+                {
+                    Url = url,
+                    Name = name,
+                    CheckedAt = checkedAt,
+                    NextRetryAt = checkedAt.AddDays(1),
+                    LastError = lastError
+                });
+            }
+        }
+
+        public async Task<List<OfflineUrlArchiveEntry>> GetDueOfflineRetriesAsync(DateTime now)
+        {
+            using var connection = _db.CreateConnection();
+            return (await connection.QueryAsync<OfflineUrlArchiveEntry>(@"
+                SELECT * FROM OfflineUrlArchive
+                WHERE RetryCount < 2
+                  AND NextRetryAt <= @Now
+                ORDER BY NextRetryAt ASC
+            ", new { Now = now })).ToList();
+        }
+
+        public async Task RegisterOfflineRetryFailureAsync(string url, string? lastError, DateTime checkedAt)
+        {
+            using var connection = _db.CreateConnection();
+            await connection.ExecuteAsync(@"
+                UPDATE OfflineUrlArchive
+                SET RetryCount = RetryCount + 1,
+                    LastCheckAt = @CheckedAt,
+                    NextRetryAt = CASE
+                        WHEN RetryCount + 1 >= 2 THEN DATETIME(FirstDetectedOfflineAt, '+2 days')
+                        ELSE @NextRetryAt
+                    END,
+                    LastError = @LastError
+                WHERE Url = @Url
+            ", new
+            {
+                Url = url,
+                CheckedAt = checkedAt,
+                NextRetryAt = checkedAt.AddDays(1),
+                LastError = lastError
+            });
+        }
+
+        public async Task RemoveOfflineArchiveAsync(string url)
+        {
+            using var connection = _db.CreateConnection();
+            await connection.ExecuteAsync(
+                "DELETE FROM OfflineUrlArchive WHERE Url = @Url",
+                new { Url = url });
+        }
+
+        public async Task<int> DeleteExpiredOfflineUrlsAsync(DateTime now)
+        {
+            using var connection = _db.CreateConnection();
+            connection.Open();
+
+            using var transaction = connection.BeginTransaction();
+            try
+            {
+                var urls = (await connection.QueryAsync<string>(@"
+                    SELECT Url FROM OfflineUrlArchive
+                    WHERE RetryCount >= 2
+                      AND DATETIME(FirstDetectedOfflineAt, '+2 days') <= @Now
+                ", new { Now = now }, transaction)).ToList();
+
+                if (urls.Count == 0)
+                {
+                    transaction.Commit();
+                    return 0;
+                }
+
+                var deletedHistory = await connection.ExecuteAsync(@"
+                    DELETE FROM M3uUrlHistory
+                    WHERE Url IN @Urls
+                ", new { Urls = urls }, transaction);
+
+                await connection.ExecuteAsync(@"
+                    DELETE FROM OfflineUrlArchive
+                    WHERE Url IN @Urls
+                ", new { Urls = urls }, transaction);
+
+                transaction.Commit();
+                return deletedHistory;
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
+        }
+
+        public async Task<List<OfflineUrlArchiveEntry>> GetOfflineArchiveAsync()
+        {
+            using var connection = _db.CreateConnection();
+            return (await connection.QueryAsync<OfflineUrlArchiveEntry>(@"
+                SELECT * FROM OfflineUrlArchive
+                ORDER BY LastCheckAt DESC
+            ")).ToList();
+        }
+
+        public async Task AddStreamCheckLogsAsync(IEnumerable<StreamCheckLogEntry> logs)
+        {
+            var items = logs?.ToList() ?? new List<StreamCheckLogEntry>();
+            if (items.Count == 0)
+            {
+                return;
+            }
+
+            using var connection = _db.CreateConnection();
+            connection.Open();
+            using var transaction = connection.BeginTransaction();
+
+            await connection.ExecuteAsync(@"
+                INSERT INTO StreamCheckLog
+                (Url, NormalizedUrl, ServerHost, Status, ResponseTimeMs, IsDuplicate, CheckedAt, Details)
+                VALUES
+                (@Url, @NormalizedUrl, @ServerHost, @Status, @ResponseTimeMs, @IsDuplicate, @CheckedAt, @Details)
+            ", items, transaction);
+
+            transaction.Commit();
+        }
+
+        public async Task AddServerScoreSnapshotsAsync(IEnumerable<ServerScoreSnapshotEntry> scores, DateTime analyzedAt)
+        {
+            var items = scores?.ToList() ?? new List<ServerScoreSnapshotEntry>();
+            if (items.Count == 0)
+            {
+                return;
+            }
+
+            using var connection = _db.CreateConnection();
+            connection.Open();
+            using var transaction = connection.BeginTransaction();
+
+            await connection.ExecuteAsync(@"
+                INSERT INTO ServerScoreSnapshot
+                (ServerHost, Score, Quality, SuccessRate, AverageResponseMs, TotalLinks, OnlineLinks, OfflineLinks, AnalyzedAt)
+                VALUES
+                (@ServerHost, @Score, @Quality, @SuccessRate, @AverageResponseMs, @TotalLinks, @OnlineLinks, @OfflineLinks, @AnalyzedAt)
+            ", items.Select(x => new
+            {
+                x.ServerHost,
+                x.Score,
+                x.Quality,
+                x.SuccessRate,
+                x.AverageResponseMs,
+                x.TotalLinks,
+                x.OnlineLinks,
+                x.OfflineLinks,
+                AnalyzedAt = analyzedAt
+            }), transaction);
+
+            transaction.Commit();
         }
     }
 }

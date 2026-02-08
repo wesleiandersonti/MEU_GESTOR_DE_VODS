@@ -30,6 +30,30 @@ e este projeto adere a [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.0.18] - 2026-02-08
+
+### 🎉 Adicionado (Features)
+- **IPTV Checker completo no botão Analisar Link**
+  - Verificação de conectividade em massa (HEAD/GET parcial) sem reproduzir stream.
+  - Status em tempo real por item: `Checking`, `ONLINE`, `OFFLINE`.
+  - Filtros de resultado: Todos, ONLINE, OFFLINE e Duplicados.
+  - Barra de progresso e contadores de análise.
+- **Score de qualidade por servidor (0-100)**
+  - Cálculo por host com taxa de sucesso, latência média e tempo de resposta.
+  - Classificação: `Excelente`, `Bom`, `Regular`, `Ruim` com painel dedicado.
+- **Detecção e tratamento de links duplicados**
+  - Normalização de URL e marcação de duplicados.
+  - Remoção em lote de duplicados.
+  - Exportação M3U: apenas ONLINE, sem duplicados, ou limpo.
+- **Persistência de logs e snapshots no SQLite**
+  - Nova tabela `StreamCheckLog` para histórico de checagens.
+  - Nova tabela `ServerScoreSnapshot` para histórico de score por servidor.
+
+### 🔄 Alterado (Changes)
+- Mantido fluxo de reprodução via VLC externo (sem player local interno).
+
+---
+
 ## [1.0.17] - 2026-02-08
 
 ### 🐛 Corrigido (Fixes)

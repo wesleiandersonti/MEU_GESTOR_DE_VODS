@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
@@ -9,18 +10,28 @@ using System.Net.Http;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using MeuGestorVODs.Repositories;
 
 namespace MeuGestorVODs
 {
     public partial class MainWindow : Window, INotifyPropertyChanged
     {
+        private enum LinkCheckScheduleMode
+        {
+            Manual,
+            Every3Hours,
+            Every6Hours,
+            Every12Hours
+        }
+
         private string _m3uUrl = "";
         private string _downloadPath = "";
         private string _filterText = "";
@@ -30,8 +41,13 @@ namespace MeuGestorVODs
         private string _itemCountText = "Itens: 0";
         private string _groupCountText = "Grupos: 0";
         private string _groupFilterInfoText = "";
+        private string _analysisProgressText = "Pronto para analisar";
+        private string _analysisSummaryText = "Analisados: 0 | ONLINE: 0 | OFFLINE: 0 | Duplicados: 0";
+        private string _selectedAnalysisFilter = "Todos";
         private Visibility _groupPanelVisibility = Visibility.Collapsed;
         private bool _isLoading = false;
+        private bool _isAnalyzingLinks;
+        private double _analysisProgressValue;
         private M3UEntry _selectedEntry = new M3UEntry();
         private const string DownloadStructureFileName = "estrutura_downloads.txt";
         private const string VodLinksDatabaseFileName = "banco_vod_links.txt";
@@ -48,6 +64,14 @@ namespace MeuGestorVODs
         public ObservableCollection<M3UEntry> FilteredEntries { get; set; } = new ObservableCollection<M3UEntry>();
         public ObservableCollection<DownloadItem> Downloads { get; set; } = new ObservableCollection<DownloadItem>();
         public ObservableCollection<GroupCategoryItem> GroupCategories { get; set; } = new ObservableCollection<GroupCategoryItem>();
+        public ObservableCollection<ServerScoreResult> ServerScores { get; set; } = new ObservableCollection<ServerScoreResult>();
+        public ObservableCollection<string> AnalysisFilterOptions { get; } = new ObservableCollection<string>
+        {
+            "Todos",
+            "ONLINE",
+            "OFFLINE",
+            "Duplicados"
+        };
 
         public string M3UUrl
         {
@@ -113,6 +137,41 @@ namespace MeuGestorVODs
             set { _groupFilterInfoText = value; OnPropertyChanged(nameof(GroupFilterInfoText)); }
         }
 
+        public string AnalysisProgressText
+        {
+            get => _analysisProgressText;
+            set { _analysisProgressText = value; OnPropertyChanged(nameof(AnalysisProgressText)); }
+        }
+
+        public string AnalysisSummaryText
+        {
+            get => _analysisSummaryText;
+            set { _analysisSummaryText = value; OnPropertyChanged(nameof(AnalysisSummaryText)); }
+        }
+
+        public string SelectedAnalysisFilter
+        {
+            get => _selectedAnalysisFilter;
+            set
+            {
+                _selectedAnalysisFilter = value;
+                OnPropertyChanged(nameof(SelectedAnalysisFilter));
+                ApplyFilter();
+            }
+        }
+
+        public double AnalysisProgressValue
+        {
+            get => _analysisProgressValue;
+            set { _analysisProgressValue = value; OnPropertyChanged(nameof(AnalysisProgressValue)); }
+        }
+
+        public bool IsAnalyzingLinks
+        {
+            get => _isAnalyzingLinks;
+            set { _isAnalyzingLinks = value; OnPropertyChanged(nameof(IsAnalyzingLinks)); }
+        }
+
         public Visibility GroupPanelVisibility
         {
             get => _groupPanelVisibility;
@@ -133,8 +192,15 @@ namespace MeuGestorVODs
 
         private M3UService _m3uService;
         private DownloadService _downloadService;
+        private LinkHealthService _linkHealthService;
+        private StreamCheckService _streamCheckService;
+        private ServerScoreService _serverScoreService;
+        private DuplicateDetectionService _duplicateDetectionService;
         private DatabaseService? _databaseService;
         private MigrationService? _migrationService;
+        private readonly DispatcherTimer _linkCheckTimer = new DispatcherTimer();
+        private LinkCheckScheduleMode _linkCheckMode = LinkCheckScheduleMode.Manual;
+        private bool _isRunningScheduledCheck;
 
         public MainWindow()
         {
@@ -142,6 +208,10 @@ namespace MeuGestorVODs
             DataContext = this;
             _m3uService = new M3UService();
             _downloadService = new DownloadService();
+            _linkHealthService = new LinkHealthService();
+            _streamCheckService = new StreamCheckService();
+            _serverScoreService = new ServerScoreService();
+            _duplicateDetectionService = new DuplicateDetectionService();
             DownloadPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), "Meu Gestor VODs");
             EnsureAndLoadDownloadStructure();
             InitializeDatabase();
@@ -151,6 +221,9 @@ namespace MeuGestorVODs
             ItemCountText = "Itens: 0";
             GroupCountText = "Grupos: 0";
             GroupFilterInfoText = "";
+            SelectedAnalysisFilter = "Todos";
+
+            _linkCheckTimer.Tick += LinkCheckTimer_Tick;
         }
 
         private void InitializeDatabase()
@@ -252,11 +325,13 @@ namespace MeuGestorVODs
                 var urls = await _databaseService.M3uUrls.GetAllAsync();
                 var onlineCount = urls.Count(u => u.IsOnline);
                 var offlineCount = urls.Count(u => !u.IsOnline);
+                var archive = await _databaseService.M3uUrls.GetOfflineArchiveAsync();
 
                 var message = $"📊 HISTÓRICO DE URLs M3U\n\n" +
                              $"Total: {urls.Count}\n" +
                              $"✅ Online: {onlineCount}\n" +
-                             $"❌ Offline: {offlineCount}\n\n" +
+                             $"❌ Offline: {offlineCount}\n" +
+                             $"🗂️ No arquivo de offline: {archive.Count}\n\n" +
                              $"Últimas 10 URLs:\n";
 
                 foreach (var url in urls.Take(10))
@@ -283,36 +358,208 @@ namespace MeuGestorVODs
                 return;
             }
 
-            var offlineUrls = await _databaseService.M3uUrls.GetOfflineAsync();
-            if (offlineUrls.Count == 0)
+            var choice = PromptForChoice(
+                "Escolha como deseja verificar links offline:",
+                "Verificação de Links Offline",
+                new[]
+                {
+                    "Começar agora (manual)",
+                    "Agendar a cada 3 horas",
+                    "Agendar a cada 6 horas",
+                    "Agendar a cada 12 horas"
+                },
+                "Começar agora (manual)");
+
+            if (string.IsNullOrWhiteSpace(choice))
             {
-                System.Windows.MessageBox.Show("Não há URLs offline para remover.", "Informação", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
-            var result = System.Windows.MessageBox.Show(
-                $"Encontradas {offlineUrls.Count} URLs offline.\n\n" +
-                $"Deseja removê-las do histórico?\n\n" +
-                $"URLs offline:\n" +
-                string.Join("\n", offlineUrls.Take(5).Select(u => $"- {u.Url.Substring(0, Math.Min(40, u.Url.Length))}...")),
-                "Confirmar Remoção",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
-
-            if (result == MessageBoxResult.Yes)
+            if (choice.StartsWith("Começar agora", StringComparison.OrdinalIgnoreCase))
             {
-                try
-                {
-                    var deleted = await _databaseService.M3uUrls.DeleteOfflineAsync();
-                    System.Windows.MessageBox.Show($"{deleted} URLs offline removidas com sucesso!", "Sucesso", MessageBoxButton.OK, MessageBoxImage.Information);
-                    await LoadM3UUrlHistory();
-                    StatusMessage = $"{deleted} URLs offline removidas";
-                }
-                catch (Exception ex)
-                {
-                    System.Windows.MessageBox.Show($"Erro ao remover: {ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
+                await ConfigureLinkCheckScheduleAsync(LinkCheckScheduleMode.Manual, runNow: true);
+                return;
             }
+
+            if (choice.Contains("3 horas", StringComparison.OrdinalIgnoreCase))
+            {
+                await ConfigureLinkCheckScheduleAsync(LinkCheckScheduleMode.Every3Hours, runNow: true);
+                return;
+            }
+
+            if (choice.Contains("6 horas", StringComparison.OrdinalIgnoreCase))
+            {
+                await ConfigureLinkCheckScheduleAsync(LinkCheckScheduleMode.Every6Hours, runNow: true);
+                return;
+            }
+
+            await ConfigureLinkCheckScheduleAsync(LinkCheckScheduleMode.Every12Hours, runNow: true);
+        }
+
+        private async void LinkCheckTimer_Tick(object? sender, EventArgs e)
+        {
+            await RunOfflineMonitoringCycleAsync("agendada");
+        }
+
+        private async Task ConfigureLinkCheckScheduleAsync(LinkCheckScheduleMode mode, bool runNow)
+        {
+            _linkCheckMode = mode;
+
+            if (mode == LinkCheckScheduleMode.Manual)
+            {
+                _linkCheckTimer.Stop();
+                if (runNow)
+                {
+                    await RunOfflineMonitoringCycleAsync("manual");
+                }
+                return;
+            }
+
+            _linkCheckTimer.Interval = mode switch
+            {
+                LinkCheckScheduleMode.Every3Hours => TimeSpan.FromHours(3),
+                LinkCheckScheduleMode.Every6Hours => TimeSpan.FromHours(6),
+                LinkCheckScheduleMode.Every12Hours => TimeSpan.FromHours(12),
+                _ => TimeSpan.FromHours(6)
+            };
+
+            _linkCheckTimer.Stop();
+            _linkCheckTimer.Start();
+
+            if (runNow)
+            {
+                await RunOfflineMonitoringCycleAsync("manual + agendada");
+            }
+
+            StatusMessage = $"Verificação automática configurada: {_linkCheckTimer.Interval.TotalHours:0}h";
+        }
+
+        private async Task RunOfflineMonitoringCycleAsync(string source)
+        {
+            if (_databaseService == null || _isRunningScheduledCheck)
+            {
+                return;
+            }
+
+            _isRunningScheduledCheck = true;
+
+            try
+            {
+                var now = DateTime.Now;
+                var checkedOnline = 0;
+                var movedToArchive = 0;
+                var recovered = 0;
+                var retryFailed = 0;
+
+                var onlineUrls = await _databaseService.M3uUrls.GetOnlineAsync();
+                foreach (var item in onlineUrls)
+                {
+                    var check = await _linkHealthService.CheckAsync(item.Url);
+                    checkedOnline++;
+
+                    if (check.IsOnline)
+                    {
+                        await _databaseService.M3uUrls.UpdateStatusAsync(item.Url, true, item.EntryCount);
+                        continue;
+                    }
+
+                    await _databaseService.M3uUrls.UpdateStatusAsync(item.Url, false, item.EntryCount);
+                    await _databaseService.M3uUrls.EnsureOfflineArchivedAsync(item.Url, item.Name, check.Details, now);
+                    movedToArchive++;
+                }
+
+                var dueRetries = await _databaseService.M3uUrls.GetDueOfflineRetriesAsync(now);
+                foreach (var archived in dueRetries)
+                {
+                    var check = await _linkHealthService.CheckAsync(archived.Url);
+
+                    if (check.IsOnline)
+                    {
+                        await _databaseService.M3uUrls.UpdateStatusAsync(archived.Url, true);
+                        await _databaseService.M3uUrls.RemoveOfflineArchiveAsync(archived.Url);
+                        recovered++;
+                        continue;
+                    }
+
+                    await _databaseService.M3uUrls.UpdateStatusAsync(archived.Url, false);
+                    await _databaseService.M3uUrls.RegisterOfflineRetryFailureAsync(archived.Url, check.Details, now);
+                    retryFailed++;
+                }
+
+                var removed = await _databaseService.M3uUrls.DeleteExpiredOfflineUrlsAsync(now);
+                var archiveCount = (await _databaseService.M3uUrls.GetOfflineArchiveAsync()).Count;
+
+                await LoadM3UUrlHistory();
+
+                StatusMessage =
+                    $"Verificação {source}: online testadas {checkedOnline}, movidas {movedToArchive}, recuperadas {recovered}, retestes falhos {retryFailed}, excluídas após 2 dias {removed}, arquivo offline {archiveCount}";
+            }
+            catch (Exception ex)
+            {
+                StatusMessage = $"Erro na verificação de links: {ex.Message}";
+            }
+            finally
+            {
+                _isRunningScheduledCheck = false;
+            }
+        }
+
+        private static string? PromptForChoice(string message, string title, IReadOnlyList<string> options, string defaultValue)
+        {
+            var combo = new System.Windows.Controls.ComboBox
+            {
+                Margin = new Thickness(0, 10, 0, 10),
+                MinWidth = 320,
+                ItemsSource = options,
+                SelectedItem = defaultValue
+            };
+
+            var okButton = new System.Windows.Controls.Button
+            {
+                Content = "OK",
+                IsDefault = true,
+                MinWidth = 80,
+                Margin = new Thickness(0, 0, 8, 0)
+            };
+
+            var cancelButton = new System.Windows.Controls.Button
+            {
+                Content = "Cancelar",
+                IsCancel = true,
+                MinWidth = 80
+            };
+
+            var buttons = new StackPanel
+            {
+                Orientation = System.Windows.Controls.Orientation.Horizontal,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
+                Children = { okButton, cancelButton }
+            };
+
+            var panel = new StackPanel
+            {
+                Margin = new Thickness(12),
+                Children =
+                {
+                    new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap },
+                    combo,
+                    buttons
+                }
+            };
+
+            var window = new Window
+            {
+                Title = title,
+                Content = panel,
+                SizeToContent = SizeToContent.WidthAndHeight,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                ResizeMode = ResizeMode.NoResize,
+                Owner = System.Windows.Application.Current?.MainWindow
+            };
+
+            okButton.Click += (_, __) => window.DialogResult = true;
+            var result = window.ShowDialog();
+            return result == true ? combo.SelectedItem as string : null;
         }
 
         private async void LoadM3U_Click(object sender, RoutedEventArgs e)
@@ -329,6 +576,7 @@ namespace MeuGestorVODs
                 StatusMessage = "Carregando lista M3U...";
                 
                 var entries = await _m3uService.LoadFromUrlAsync(M3UUrl);
+                InitializeEntryAnalysisFields(entries);
 
                 _allEntries.Clear();
                 _allEntries.AddRange(entries);
@@ -395,6 +643,14 @@ namespace MeuGestorVODs
             {
                 filtered = filtered.Where(MatchesFilter);
             }
+
+            filtered = SelectedAnalysisFilter switch
+            {
+                "ONLINE" => filtered.Where(x => x.CheckStatus == ItemStatus.Ok),
+                "OFFLINE" => filtered.Where(x => x.CheckStatus == ItemStatus.Error),
+                "Duplicados" => filtered.Where(x => x.IsDuplicate),
+                _ => filtered
+            };
 
             foreach (var entry in filtered)
             {
@@ -929,6 +1185,7 @@ namespace MeuGestorVODs
                 
                 var content = await File.ReadAllTextAsync(LocalFilePath);
                 var entries = _m3uService.ParseFromString(content);
+                InitializeEntryAnalysisFields(entries);
 
                 _allEntries.Clear();
                 _allEntries.AddRange(entries);
@@ -973,6 +1230,294 @@ namespace MeuGestorVODs
             {
                 IsLoading = false;
             }
+        }
+
+        private void InitializeEntryAnalysisFields(IEnumerable<M3UEntry> entries)
+        {
+            foreach (var entry in entries)
+            {
+                entry.CheckStatus = ItemStatus.Checking;
+                entry.ServerHost = string.Empty;
+                entry.ResponseTimeMs = 0;
+                entry.LastCheckedAt = null;
+                entry.CheckDetails = string.Empty;
+                entry.IsDuplicate = false;
+                entry.NormalizedUrl = DuplicateDetectionService.NormalizeUrl(entry.Url);
+            }
+
+            AnalysisProgressValue = 0;
+            AnalysisProgressText = "Pronto para analisar";
+            AnalysisSummaryText = "Analisados: 0 | ONLINE: 0 | OFFLINE: 0 | Duplicados: 0";
+            ServerScores.Clear();
+        }
+
+        private async void AnalyzeLinks_Click(object sender, RoutedEventArgs e)
+        {
+            if (IsAnalyzingLinks)
+            {
+                return;
+            }
+
+            if (_allEntries.Count == 0)
+            {
+                System.Windows.MessageBox.Show("Carregue uma lista antes de analisar os links.", "Analisar Link", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            IsAnalyzingLinks = true;
+            IsLoading = true;
+            StatusMessage = "Iniciando IPTV Checker...";
+
+            try
+            {
+                var duplicateCount = _duplicateDetectionService.MarkDuplicates(_allEntries);
+
+                foreach (var entry in _allEntries)
+                {
+                    entry.CheckStatus = ItemStatus.Checking;
+                    entry.CheckDetails = "Aguardando";
+                    entry.ResponseTimeMs = 0;
+                    entry.LastCheckedAt = null;
+                }
+
+                var total = _allEntries.Count;
+                var checkedCount = 0;
+                var onlineCount = 0;
+                var offlineCount = 0;
+
+                var queue = new ConcurrentQueue<StreamCheckItemResult>();
+                var logs = new ConcurrentQueue<StreamCheckLogEntry>();
+
+                var uiTimer = new DispatcherTimer
+                {
+                    Interval = TimeSpan.FromMilliseconds(120)
+                };
+
+                uiTimer.Tick += (_, _) =>
+                {
+                    var updated = 0;
+                    while (updated < 600 && queue.TryDequeue(out var item))
+                    {
+                        item.Entry.CheckStatus = item.Status;
+                        item.Entry.ServerHost = item.ServerHost;
+                        item.Entry.ResponseTimeMs = item.ResponseTimeMs;
+                        item.Entry.LastCheckedAt = item.CheckedAt;
+                        item.Entry.CheckDetails = item.Details;
+                        updated++;
+                    }
+
+                    AnalysisProgressValue = total == 0 ? 0 : checkedCount * 100.0 / total;
+                    AnalysisProgressText = $"Analisando {checkedCount} de {total} links...";
+                    AnalysisSummaryText = $"Analisados: {checkedCount} | ONLINE: {onlineCount} | OFFLINE: {offlineCount} | Duplicados: {duplicateCount}";
+                };
+
+                uiTimer.Start();
+
+                var options = new StreamCheckOptions
+                {
+                    TimeoutSeconds = 6,
+                    MaxParallelism = ComputeParallelism(total)
+                };
+
+                await _streamCheckService.AnalyzeAsync(
+                    _allEntries,
+                    options,
+                    result =>
+                    {
+                        queue.Enqueue(result);
+
+                        if (result.IsOnline)
+                        {
+                            Interlocked.Increment(ref onlineCount);
+                        }
+                        else
+                        {
+                            Interlocked.Increment(ref offlineCount);
+                        }
+
+                        Interlocked.Increment(ref checkedCount);
+
+                        logs.Enqueue(new StreamCheckLogEntry
+                        {
+                            Url = result.Entry.Url,
+                            NormalizedUrl = result.NormalizedUrl,
+                            ServerHost = result.ServerHost,
+                            Status = result.IsOnline ? "ONLINE" : "OFFLINE",
+                            ResponseTimeMs = result.ResponseTimeMs,
+                            IsDuplicate = result.Entry.IsDuplicate,
+                            CheckedAt = result.CheckedAt,
+                            Details = result.Details
+                        });
+
+                        return Task.CompletedTask;
+                    },
+                    CancellationToken.None);
+
+                uiTimer.Stop();
+
+                while (queue.TryDequeue(out var item))
+                {
+                    item.Entry.CheckStatus = item.Status;
+                    item.Entry.ServerHost = item.ServerHost;
+                    item.Entry.ResponseTimeMs = item.ResponseTimeMs;
+                    item.Entry.LastCheckedAt = item.CheckedAt;
+                    item.Entry.CheckDetails = item.Details;
+                }
+
+                ServerScores.Clear();
+                foreach (var score in _serverScoreService.Calculate(_allEntries))
+                {
+                    ServerScores.Add(score);
+                }
+
+                if (_databaseService != null)
+                {
+                    await _databaseService.M3uUrls.AddStreamCheckLogsAsync(logs.ToArray());
+                    await _databaseService.M3uUrls.AddServerScoreSnapshotsAsync(
+                        ServerScores.Select(x => new ServerScoreSnapshotEntry
+                        {
+                            ServerHost = x.Host,
+                            Score = x.Score,
+                            Quality = x.Quality.ToString(),
+                            SuccessRate = x.SuccessRate,
+                            AverageResponseMs = x.AverageResponseMs,
+                            TotalLinks = x.TotalLinks,
+                            OnlineLinks = x.OnlineLinks,
+                            OfflineLinks = x.OfflineLinks
+                        }),
+                        DateTime.Now);
+                }
+
+                AnalysisProgressValue = 100;
+                AnalysisProgressText = $"Análise concluída: {checkedCount} de {total}";
+                AnalysisSummaryText = $"Analisados: {checkedCount} | ONLINE: {onlineCount} | OFFLINE: {offlineCount} | Duplicados: {duplicateCount}";
+
+                ApplyFilter();
+                EntriesList.Items.Refresh();
+                StatusMessage = "IPTV Checker concluído com sucesso.";
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show($"Erro ao analisar links: {ex.Message}", "Analisar Link", MessageBoxButton.OK, MessageBoxImage.Error);
+                StatusMessage = "Erro durante análise de links";
+            }
+            finally
+            {
+                IsLoading = false;
+                IsAnalyzingLinks = false;
+            }
+        }
+
+        private static int ComputeParallelism(int total)
+        {
+            if (total <= 1000) return 20;
+            if (total <= 10000) return 40;
+            if (total <= 50000) return 56;
+            return 72;
+        }
+
+        private void RemoveDuplicates_Click(object sender, RoutedEventArgs e)
+        {
+            if (_allEntries.Count == 0)
+            {
+                return;
+            }
+
+            var duplicates = _allEntries.Count(x => x.IsDuplicate);
+            if (duplicates == 0)
+            {
+                System.Windows.MessageBox.Show("Nenhum link duplicado encontrado.", "Duplicados", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var confirm = System.Windows.MessageBox.Show(
+                $"Foram encontrados {duplicates} links duplicados.\n\nDeseja remover da lista carregada?",
+                "Remover Duplicados",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (confirm != MessageBoxResult.Yes)
+            {
+                return;
+            }
+
+            _allEntries.RemoveAll(x => x.IsDuplicate);
+            BuildGroupIndex(_allEntries);
+            ApplyFilter();
+            StatusMessage = $"{duplicates} duplicados removidos da lista atual.";
+        }
+
+        private async void ExportAnalysis_Click(object sender, RoutedEventArgs e)
+        {
+            if (_allEntries.Count == 0)
+            {
+                return;
+            }
+
+            var choice = PromptForChoice(
+                "Escolha o tipo de exportação:",
+                "Exportar resultado da análise",
+                new[]
+                {
+                    "M3U apenas ONLINE",
+                    "M3U sem duplicados",
+                    "M3U limpo (ONLINE + sem duplicados)"
+                },
+                "M3U limpo (ONLINE + sem duplicados)");
+
+            if (string.IsNullOrWhiteSpace(choice))
+            {
+                return;
+            }
+
+            IEnumerable<M3UEntry> source = _allEntries;
+            var fileSuffix = "completo";
+
+            if (choice.Contains("apenas ONLINE", StringComparison.OrdinalIgnoreCase))
+            {
+                source = source.Where(x => x.CheckStatus == ItemStatus.Ok);
+                fileSuffix = "online";
+            }
+            else if (choice.Contains("sem duplicados", StringComparison.OrdinalIgnoreCase) && !choice.Contains("ONLINE", StringComparison.OrdinalIgnoreCase))
+            {
+                source = source.Where(x => !x.IsDuplicate);
+                fileSuffix = "sem_duplicados";
+            }
+            else
+            {
+                source = source.Where(x => x.CheckStatus == ItemStatus.Ok && !x.IsDuplicate);
+                fileSuffix = "limpo";
+            }
+
+            var list = source.ToList();
+            if (list.Count == 0)
+            {
+                System.Windows.MessageBox.Show("Nenhum item atende ao critério de exportação.", "Exportar M3U", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var path = Path.Combine(DownloadPath, $"export_checker_{fileSuffix}_{DateTime.Now:yyyyMMdd_HHmmss}.m3u");
+            var lines = new List<string> { "#EXTM3U" };
+
+            foreach (var entry in list)
+            {
+                var extinf = $"#EXTINF:-1 tvg-id=\"{EscapeM3uAttribute(entry.TvgId)}\" " +
+                             $"tvg-name=\"{EscapeM3uAttribute(entry.Name)}\" " +
+                             $"tvg-logo=\"{EscapeM3uAttribute(entry.LogoUrl)}\" " +
+                             $"group-title=\"{EscapeM3uAttribute(entry.GroupTitle)}\",{EscapeM3uAttribute(entry.Name)}";
+
+                lines.Add(extinf);
+                lines.Add(entry.Url);
+            }
+
+            await File.WriteAllLinesAsync(path, lines);
+            StatusMessage = $"Exportado: {list.Count} links em {Path.GetFileName(path)}";
+
+            System.Windows.MessageBox.Show(
+                $"Exportação concluída!\n\nArquivo: {path}\nItens: {list.Count}",
+                "Exportar M3U",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
         }
 
         private void EnsureLinkDatabaseFiles()

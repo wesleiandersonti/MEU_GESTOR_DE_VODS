@@ -54,6 +54,14 @@ namespace MeuGestorVODs.Repositories
         Task<int> DeleteOfflineAsync();
         Task<bool> ExistsAsync(string url);
         Task UpdateStatusAsync(string url, bool isOnline, int entryCount = 0);
+        Task EnsureOfflineArchivedAsync(string url, string? name, string? lastError, DateTime checkedAt);
+        Task<List<OfflineUrlArchiveEntry>> GetDueOfflineRetriesAsync(DateTime now);
+        Task RegisterOfflineRetryFailureAsync(string url, string? lastError, DateTime checkedAt);
+        Task RemoveOfflineArchiveAsync(string url);
+        Task<int> DeleteExpiredOfflineUrlsAsync(DateTime now);
+        Task<List<OfflineUrlArchiveEntry>> GetOfflineArchiveAsync();
+        Task AddStreamCheckLogsAsync(IEnumerable<StreamCheckLogEntry> logs);
+        Task AddServerScoreSnapshotsAsync(IEnumerable<ServerScoreSnapshotEntry> scores, DateTime analyzedAt);
     }
 
     /// <summary>
@@ -70,6 +78,42 @@ namespace MeuGestorVODs.Repositories
         public int SuccessCount { get; set; }
         public int FailCount { get; set; }
         public DateTime CreatedAt { get; set; }
+    }
+
+    public class OfflineUrlArchiveEntry
+    {
+        public int Id { get; set; }
+        public string Url { get; set; } = string.Empty;
+        public string? Name { get; set; }
+        public DateTime FirstDetectedOfflineAt { get; set; }
+        public DateTime LastCheckAt { get; set; }
+        public int RetryCount { get; set; }
+        public DateTime NextRetryAt { get; set; }
+        public string? LastError { get; set; }
+    }
+
+    public class StreamCheckLogEntry
+    {
+        public string Url { get; set; } = string.Empty;
+        public string NormalizedUrl { get; set; } = string.Empty;
+        public string ServerHost { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public double ResponseTimeMs { get; set; }
+        public bool IsDuplicate { get; set; }
+        public DateTime CheckedAt { get; set; }
+        public string? Details { get; set; }
+    }
+
+    public class ServerScoreSnapshotEntry
+    {
+        public string ServerHost { get; set; } = string.Empty;
+        public double Score { get; set; }
+        public string Quality { get; set; } = string.Empty;
+        public double SuccessRate { get; set; }
+        public double AverageResponseMs { get; set; }
+        public int TotalLinks { get; set; }
+        public int OnlineLinks { get; set; }
+        public int OfflineLinks { get; set; }
     }
 
     /// <summary>
