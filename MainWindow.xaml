@@ -171,7 +171,7 @@
                                             <ProgressBar Value="{Binding Progress}" Maximum="100" Height="15" Margin="0,5"/>
                                             <Grid>
                                                 <TextBlock Text="{Binding Status}" FontSize="11" Foreground="Gray"/>
-                                                <TextBlock Text="{Binding Progress, StringFormat='{}{0:F0}%'" FontSize="11" 
+                                                <TextBlock Text="{Binding Progress, StringFormat='{}{0:F0}%'}" FontSize="11" 
                                                           HorizontalAlignment="Right"/>
                                             </Grid>
                                         </StackPanel>

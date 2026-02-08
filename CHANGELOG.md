@@ -30,6 +30,22 @@ e este projeto adere a [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.0.17] - 2026-02-08
+
+### 🐛 Corrigido (Fixes)
+- Corrige erro de build no XAML da lista de Downloads (`StringFormat` inválido em `MainWindow.xaml`).
+- Build volta a compilar normalmente no GitHub Actions.
+
+---
+
+## [1.0.16] - 2026-02-08
+
+### 🔄 Alterado (Changes)
+- Revertida a reprodução local e retomado o fluxo estável de reprodução via VLC externo.
+- Removidos arquivos e dependências do player local (LibVLCSharp).
+
+---
+
 ## [1.0.15] - 2026-02-08
 
 ### 🎉 Adicionado (Features)
