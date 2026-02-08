@@ -7,6 +7,14 @@ e este projeto adere a [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.0.10] - 2026-02-08
+
+### 🐛 Corrigido (Fixes)
+- Erro de build: `Cannot await 'void'` no método LoadM3UUrlHistory
+- Alterado método de `async void` para `async Task` para permitir await correto
+
+---
+
 ## [1.0.9] - 2026-02-08
 
 ### 🎉 Adicionado (Features)
