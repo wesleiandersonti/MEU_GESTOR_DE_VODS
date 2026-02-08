@@ -4,6 +4,10 @@
         xmlns:local="clr-namespace:MeuGestorVODs"
         Title="{Binding WindowTitle}" Height="700" Width="1100"
         WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <local:ProgressToVisibilityConverter x:Key="ProgressToVisibilityConverter"/>
+    </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -163,15 +167,34 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border BorderBrush="#E0E0E0" BorderThickness="0,0,0,1" Padding="10">
-                                        <StackPanel>
-                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                                            <ProgressBar Value="{Binding Progress}" Maximum="100" Height="15" Margin="0,5"/>
-                                            <Grid>
-                                                <TextBlock Text="{Binding Status}" FontSize="11" Foreground="Gray"/>
-                                                <TextBlock Text="{Binding Progress, StringFormat='{}{0:F0}%'}" FontSize="11" 
-                                                          HorizontalAlignment="Right"/>
-                                            </Grid>
-                                        </StackPanel>
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" 
+                                                      Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,0,0,5"/>
+                                            
+                                            <ProgressBar Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" 
+                                                        Value="{Binding Progress}" Maximum="100" Height="15" Margin="0,0,0,5"/>
+                                            
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="{Binding Status}" FontSize="11" Foreground="Gray" VerticalAlignment="Center"/>
+                                            
+                                            <Button Grid.Row="2" Grid.Column="1" 
+                                                   Content="▶ Reproduzir" 
+                                                   Click="PlayDownload_Click"
+                                                   Padding="10,3" 
+                                                   Background="#4CAF50"
+                                                   Foreground="White"
+                                                   FontSize="10"
+                                                   Visibility="{Binding Progress, Converter={StaticResource ProgressToVisibilityConverter}}"/>
+                                        </Grid>
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>

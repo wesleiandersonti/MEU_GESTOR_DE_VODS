@@ -12,6 +12,7 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using MeuGestorVODs.Repositories;
@@ -1850,6 +1851,61 @@ namespace MeuGestorVODs
             }
         }
 
+        private async void PlayDownload_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Obtém o item de download do DataContext
+                if (sender is Button button && button.DataContext is DownloadItem downloadItem)
+                {
+                    StatusMessage = $"Abrindo player: {downloadItem.Name}...";
+                    
+                    // Cria e mostra a janela do player
+                    var playerWindow = new PlayerWindow();
+                    playerWindow.Show();
+                    
+                    // Busca a URL original no banco de dados
+                    string? streamUrl = null;
+                    if (_databaseService != null)
+                    {
+                        var entries = await _databaseService.Entries.GetAllAsync();
+                        var entry = entries.FirstOrDefault(e => e.Name == downloadItem.Name);
+                        if (entry != null)
+                        {
+                            streamUrl = entry.Url;
+                        }
+                    }
+                    
+                    // Se não encontrou no banco, tenta usar o caminho do arquivo local
+                    if (string.IsNullOrEmpty(streamUrl))
+                    {
+                        // Procura o arquivo baixado
+                        var possiblePath = Path.Combine(DownloadPath, downloadItem.Name);
+                        if (File.Exists(possiblePath))
+                        {
+                            streamUrl = possiblePath;
+                        }
+                    }
+                    
+                    if (!string.IsNullOrEmpty(streamUrl))
+                    {
+                        await playerWindow.PlayStream(streamUrl, downloadItem.Name);
+                        StatusMessage = $"Reproduzindo: {downloadItem.Name}";
+                    }
+                    else
+                    {
+                        MessageBox.Show("Não foi possível encontrar a URL do stream.", "Erro", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        playerWindow.Close();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Erro ao abrir player: {ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+                StatusMessage = "Erro ao abrir player";
+            }
+        }
+
         public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged(string propertyName)
         {
@@ -1900,6 +1956,23 @@ namespace MeuGestorVODs
         protected void OnPropertyChanged(string propertyName)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+    }
+
+    public class ProgressToVisibilityConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            if (value is double progress)
+            {
+                return progress >= 100 ? Visibility.Visible : Visibility.Collapsed;
+            }
+            return Visibility.Collapsed;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            throw new NotImplementedException();
         }
     }
 }

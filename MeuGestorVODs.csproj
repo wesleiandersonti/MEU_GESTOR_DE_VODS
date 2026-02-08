@@ -17,6 +17,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.0" />
     <PackageReference Include="Dapper" Version="2.1.28" />
+    <PackageReference Include="LibVLCSharp.WPF" Version="3.8.5" />
   </ItemGroup>
 
 </Project>
