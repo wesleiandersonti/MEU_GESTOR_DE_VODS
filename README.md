@@ -4,11 +4,20 @@ Gerenciador de VODs para listas IPTV M3U em C# .NET 8 (WPF).
 
 ## 📚 Documentacao
 
-- Base do projeto: `docs/BASE_DO_PROJETO.md`
-- Arquitetura XUI One (referencia): `docs/ARQUITETURA_XUI_ONE_IPTV.md`
-- Modelo de dados (XUI-style): `docs/MODELO_DE_DADOS_XUI.md`
-- Plano de implementacao: `docs/PLANO_DE_IMPLEMENTACAO_XUI.md`
-- Plano tecnico por arquivo/classe: `docs/PLANO_TECNICO_POR_ARQUIVO_CLASSE.md`
+### Para Usuarios
+- **CHANGELOG.md** - Historico completo de versoes e alteracoes
+- **BUILD_INSTRUCTIONS.md** - Como compilar o projeto
+
+### Para Desenvolvedores
+- **docs/PROJECT_ARCHITECTURE.md** - Arquitetura completa do sistema
+- **docs/DATABASE_SCHEMA.md** - Documentacao do banco SQLite
+- **docs/QUICK_START.md** - Guia rapido de desenvolvimento
+- **docs/PLANO_TECNICO_POR_ARQUIVO_CLASSE.md** - Detalhes tecnicos
+
+### Referencias
+- **docs/BASE_DO_PROJETO.md** - Base e conceitos
+- **docs/ARQUITETURA_XUI_ONE_IPTV.md** - Arquitetura XUI One
+- **docs/MODELO_DE_DADOS_XUI.md** - Modelo de dados
 
 ## 🚀 Download
 
@@ -37,9 +46,11 @@ Gerenciador de VODs para listas IPTV M3U em C# .NET 8 (WPF).
 2. Extraia para qualquer pasta.
 3. Execute `MeuGestorVODs.exe`.
 
-## ✅ Funcionalidades atuais
+## ✅ Funcionalidades
 
+### 🎬 Gerenciamento de VODs
 - Carregar playlist M3U por URL
+- ComboBox com historico de URLs (ultimas 20)
 - Botoes interativos no topo: `Itens` e `Grupos`
 - Listar itens com nome e grupo
 - Painel secundario de grupos por categoria (com contagem)
@@ -48,16 +59,27 @@ Gerenciador de VODs para listas IPTV M3U em C# .NET 8 (WPF).
 - Selecionar todos / desmarcar todos
 - Download de itens selecionados com progresso por item
 - Verificacao de arquivo ja existente (evita baixar duplicado)
-- Organizacao automatica em pastas por categoria via TXT
-- Verificacao de atualizacao automatica
+
+### 💾 Banco de Dados SQLite
+- **Persistencia em SQLite** (banco principal)
+- **Historico de URLs M3U** com status online/offline
+- **Botao "Historico"** - Visualiza todas as URLs testadas
+- **Botao "Limpar Offline"** - Remove URLs fora do ar
+- **Estatisticas do banco** - Total de entradas e categorias
+- Backup automatico em arquivos TXT (formato M3U)
+- Migracao automatica de dados antigos
+
+### 🔄 Atualizacoes
+- Verificacao de atualizacao automatica via GitHub
 - Exibicao da versao atual na barra inferior
-- Rollback para versao anterior (baixa e abre instalador da release escolhida)
-- Clique com botao esquerdo sobre um conteudo para abrir menu rapido
-- Menu rapido com:
-  - copiar URL do canal
-  - colar URL no campo M3U
-  - verificar se o link ja esta salvo nos bancos TXT
-  - reproduzir o conteudo direto no VLC
+- Rollback para versao anterior
+
+### 🎯 Acoes Rapidas
+- Clique com botao esquerdo sobre um conteudo para abrir menu rapido:
+  - Copiar URL do canal
+  - Colar URL no campo M3U
+  - Verificar se o link esta salvo no banco
+  - Reproduzir o conteudo direto no VLC
 
 ## ⚙️ Estrutura automatica de pastas (TXT)
 
