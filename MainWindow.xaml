@@ -8,7 +8,6 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -81,7 +80,7 @@
         </Grid>
 
         <!-- Main Content -->
-        <Grid Grid.Row="2" Margin="10,0">
+        <Grid Grid.Row="2" Margin="10,5">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="2*"/>
                 <ColumnDefinition Width="10"/>
@@ -183,8 +182,8 @@
         </Grid>
 
         <!-- Status Bar -->
-        <Border Grid.Row="3" Background="#F0F0F0" Padding="10" HorizontalAlignment="Stretch">
-            <Grid>
+        <Border Grid.Row="3" Background="#F0F0F0" Padding="5,8" HorizontalAlignment="Stretch" VerticalAlignment="Bottom">
+            <Grid VerticalAlignment="Center">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
@@ -196,13 +195,13 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Text="{Binding StatusMessage}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,10,0"/>
-                <TextBlock Grid.Column="1" Text="{Binding CurrentVersionText}" VerticalAlignment="Center" Margin="0,0,5,0" FontWeight="SemiBold" FontSize="11"/>
-                <Button Grid.Column="2" Content="Verificar" Click="CheckUpdates_Click" Padding="8,3" Margin="0,0,5,0" Background="#FF9800" Foreground="White" FontSize="11"/>
-                <Button Grid.Column="3" Content="Rollback" Click="RollbackVersion_Click" Padding="8,3" Margin="0,0,5,0" Background="#455A64" Foreground="White" FontSize="11"/>
-                <Button Grid.Column="4" Content="TXT VOD" Click="OpenVodLinksTxt_Click" Padding="8,3" Margin="0,0,5,0" FontSize="11"/>
-                <Button Grid.Column="5" Content="TXT Canais" Click="OpenLiveLinksTxt_Click" Padding="8,3" Margin="0,0,5,0" FontSize="11"/>
-                <Button Grid.Column="6" Content="Estatísticas" Click="ShowDatabaseStats_Click" Padding="8,3" Margin="0,0,5,0" Background="#673AB7" Foreground="White" FontSize="11"/>
-                <Button Grid.Column="7" Content="GitHub" Click="OpenGitHub_Click" Padding="8,3" FontSize="11"/>
+                <TextBlock Grid.Column="1" Text="{Binding CurrentVersionText}" VerticalAlignment="Center" Margin="0,0,8,0" FontWeight="SemiBold" FontSize="11"/>
+                <Button Grid.Column="2" Content="Verificar Atualizações" Click="CheckUpdates_Click" Padding="10,4" Margin="0,0,8,0" Background="#FF9800" Foreground="White" FontSize="11" VerticalAlignment="Center"/>
+                <Button Grid.Column="3" Content="Voltar Versão" Click="RollbackVersion_Click" Padding="10,4" Margin="0,0,8,0" Background="#455A64" Foreground="White" FontSize="11" VerticalAlignment="Center"/>
+                <Button Grid.Column="4" Content="Abrir TXT VOD" Click="OpenVodLinksTxt_Click" Padding="10,4" Margin="0,0,8,0" FontSize="11" VerticalAlignment="Center"/>
+                <Button Grid.Column="5" Content="Abrir TXT Canais" Click="OpenLiveLinksTxt_Click" Padding="10,4" Margin="0,0,8,0" FontSize="11" VerticalAlignment="Center"/>
+                <Button Grid.Column="6" Content="Estatísticas BD" Click="ShowDatabaseStats_Click" Padding="10,4" Margin="0,0,8,0" Background="#673AB7" Foreground="White" FontSize="11" VerticalAlignment="Center"/>
+                <Button Grid.Column="7" Content="GitHub" Click="OpenGitHub_Click" Padding="10,4" FontSize="11" VerticalAlignment="Center"/>
             </Grid>
         </Border>
 
