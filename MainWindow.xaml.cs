@@ -14,6 +14,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using MeuGestorVODs.Repositories;
 
 namespace MeuGestorVODs
 {
@@ -119,6 +120,8 @@ namespace MeuGestorVODs
 
         private M3UService _m3uService;
         private DownloadService _downloadService;
+        private DatabaseService? _databaseService;
+        private MigrationService? _migrationService;
 
         public MainWindow()
         {
@@ -128,12 +131,73 @@ namespace MeuGestorVODs
             _downloadService = new DownloadService();
             DownloadPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), "Meu Gestor VODs");
             EnsureAndLoadDownloadStructure();
+            InitializeDatabase();
             EnsureLinkDatabaseFiles();
             _releaseClient.DefaultRequestHeaders.Add("User-Agent", "MeuGestorVODs");
             CurrentVersionText = $"Versao atual: {GetCurrentAppVersion()}";
             ItemCountText = "Itens: 0";
             GroupCountText = "Grupos: 0";
             GroupFilterInfoText = "";
+        }
+
+        private void InitializeDatabase()
+        {
+            try
+            {
+                if (!Directory.Exists(DownloadPath))
+                {
+                    Directory.CreateDirectory(DownloadPath);
+                }
+
+                _databaseService = new DatabaseService(DownloadPath);
+                _migrationService = new MigrationService(_databaseService);
+
+                // Verificar se precisa migrar dados antigos
+                var vodFilePath = Path.Combine(DownloadPath, VodLinksDatabaseFileName);
+                var liveFilePath = Path.Combine(DownloadPath, LiveLinksDatabaseFileName);
+
+                if (_migrationService.HasDataToMigrate(vodFilePath, liveFilePath))
+                {
+                    var result = System.Windows.MessageBox.Show(
+                        "Foram encontrados dados antigos nos arquivos TXT. Deseja migrar para o novo banco SQLite?\n\n" +
+                        "A migração preservará todos os seus links e metadados.",
+                        "Migração de Dados",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Question);
+
+                    if (result == MessageBoxResult.Yes)
+                    {
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                var migrationResult = await _migrationService.MigrateFromTxtFilesAsync(
+                                    vodFilePath, liveFilePath);
+
+                                await Dispatcher.InvokeAsync(() =>
+                                {
+                                    StatusMessage = $"Migração concluída: {migrationResult.TotalMigrated} entradas migradas";
+                                });
+                            }
+                            catch (Exception ex)
+                            {
+                                await Dispatcher.InvokeAsync(() =>
+                                {
+                                    StatusMessage = $"Erro na migração: {ex.Message}";
+                                });
+                            }
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show(
+                    $"Erro ao inicializar banco de dados: {ex.Message}\n\nO aplicativo funcionará sem persistência.",
+                    "Erro de Inicialização",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
         }
 
         private async void LoadM3U_Click(object sender, RoutedEventArgs e)
@@ -169,7 +233,10 @@ namespace MeuGestorVODs
                 var (newVod, newLive) = PersistLinkDatabases(entries);
                 
                 ApplyFilter();
-                StatusMessage = $"Carregados {entries.Count} itens | Banco TXT: +{newVod} VOD, +{newLive} canais";
+                
+                // Mostrar estatísticas do banco
+                var dbCount = _databaseService?.Entries.GetCountAsync().Result ?? 0;
+                StatusMessage = $"Carregados {entries.Count} itens | SQLite: +{newVod} VOD, +{newLive} canais | Total no banco: {dbCount}";
             }
             catch (Exception ex)
             {
@@ -401,7 +468,7 @@ namespace MeuGestorVODs
             StatusMessage = "URL colada no campo M3U";
         }
 
-        private void CheckSelectedInTxt_Click(object sender, RoutedEventArgs e)
+        private async void CheckSelectedInTxt_Click(object sender, RoutedEventArgs e)
         {
             var entry = ResolveCurrentEntry();
             if (entry == null)
@@ -410,6 +477,23 @@ namespace MeuGestorVODs
                 return;
             }
 
+            // Verificar no banco SQLite primeiro
+            if (_databaseService != null)
+            {
+                var exists = await _databaseService.Entries.ExistsByUrlAsync(entry.Url);
+                if (exists)
+                {
+                    System.Windows.MessageBox.Show(
+                        $"Conteudo encontrado no banco de dados SQLite.\n\nNome: {entry.Name}",
+                        "Verificacao Banco de Dados",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                    StatusMessage = "Conteudo ja esta salvo no banco SQLite";
+                    return;
+                }
+            }
+
+            // Fallback para arquivos TXT (compatibilidade)
             EnsureLinkDatabaseFiles();
 
             var vodFilePath = Path.Combine(DownloadPath, VodLinksDatabaseFileName);
@@ -431,11 +515,11 @@ namespace MeuGestorVODs
             else
             {
                 System.Windows.MessageBox.Show(
-                    "Conteudo ainda nao foi encontrado nos bancos TXT.",
-                    "Verificacao TXT",
+                    "Conteudo ainda nao foi encontrado nos bancos.",
+                    "Verificacao",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
-                StatusMessage = "Conteudo nao encontrado nos bancos TXT";
+                StatusMessage = "Conteudo nao encontrado no banco de dados";
             }
         }
 
@@ -496,24 +580,54 @@ namespace MeuGestorVODs
             }
 
             var target = url.Trim();
-            foreach (var rawLine in File.ReadLines(filePath))
+            var lines = File.ReadAllLines(filePath);
+            var isM3uFormat = lines.Length > 0 && lines[0].Trim().StartsWith("#EXTM3U", StringComparison.OrdinalIgnoreCase);
+
+            if (isM3uFormat)
             {
-                var line = rawLine.Trim();
-                if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#", StringComparison.Ordinal))
+                // Parse M3U format
+                for (int i = 0; i < lines.Length - 1; i++)
                 {
-                    continue;
-                }
+                    var line = lines[i].Trim();
+                    if (!line.StartsWith("#EXTINF:", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
 
-                var parts = line.Split('|');
-                if (parts.Length == 0)
-                {
-                    continue;
-                }
+                    var nextLine = lines[i + 1].Trim();
+                    if (string.IsNullOrWhiteSpace(nextLine) || nextLine.StartsWith("#", StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
 
-                var candidate = parts[^1].Trim();
-                if (string.Equals(candidate, target, StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(nextLine, target, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+                }
+            }
+            else
+            {
+                // Parse old pipe-delimited format (backward compatibility)
+                foreach (var rawLine in lines)
                 {
-                    return true;
+                    var line = rawLine.Trim();
+                    if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#", StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    var parts = line.Split('|');
+                    if (parts.Length == 0)
+                    {
+                        continue;
+                    }
+
+                    var candidate = parts[^1].Trim();
+                    if (string.Equals(candidate, target, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
                 }
             }
 
@@ -641,8 +755,13 @@ namespace MeuGestorVODs
             {
                 DownloadPath = dialog.SelectedPath;
                 EnsureAndLoadDownloadStructure();
+                
+                // Reinicializar banco na nova pasta
+                _databaseService?.Dispose();
+                InitializeDatabase();
+                
                 EnsureLinkDatabaseFiles();
-                StatusMessage = $"Estrutura de download carregada em: {Path.Combine(DownloadPath, DownloadStructureFileName)}";
+                StatusMessage = $"Banco de dados SQLite carregado em: {Path.Combine(DownloadPath, "database.sqlite")}";
             }
         }
 
@@ -658,8 +777,8 @@ namespace MeuGestorVODs
             {
                 File.WriteAllLines(vodFilePath, new[]
                 {
-                    "# Banco TXT de links VOD (videos e series)",
-                    "# Formato: Nome|Grupo|URL"
+                    "#EXTM3U",
+                    "# Banco TXT de links VOD (videos e series) - Formato M3U"
                 });
             }
 
@@ -668,8 +787,8 @@ namespace MeuGestorVODs
             {
                 File.WriteAllLines(liveFilePath, new[]
                 {
-                    "# Banco TXT de links de canais ao vivo",
-                    "# Formato: Nome|Grupo|URL"
+                    "#EXTM3U",
+                    "# Banco TXT de links de canais ao vivo - Formato M3U"
                 });
             }
         }
@@ -678,13 +797,50 @@ namespace MeuGestorVODs
         {
             EnsureLinkDatabaseFiles();
 
+            // Sempre manter ambos sincronizados: SQLite (principal) + TXT (backup)
             var vodFilePath = Path.Combine(DownloadPath, VodLinksDatabaseFileName);
             var liveFilePath = Path.Combine(DownloadPath, LiveLinksDatabaseFileName);
 
-            var newVod = MergeEntriesIntoDatabase(vodFilePath, entries.Where(IsVodEntry));
-            var newLive = MergeEntriesIntoDatabase(liveFilePath, entries.Where(e => !IsVodEntry(e)));
+            var vodEntries = entries.Where(IsVodEntry).ToList();
+            var liveEntries = entries.Where(e => !IsVodEntry(e)).ToList();
 
-            return (newVod, newLive);
+            var newVodEntries = new List<M3UEntry>();
+            var newLiveEntries = new List<M3UEntry>();
+
+            // PASSO 1: Salvar no SQLite (banco principal)
+            if (_databaseService != null)
+            {
+                foreach (var entry in vodEntries)
+                {
+                    if (!_databaseService.Entries.ExistsByUrlAsync(entry.Url).Result)
+                    {
+                        _databaseService.Entries.AddAsync(entry).Wait();
+                        newVodEntries.Add(entry);
+                    }
+                }
+
+                foreach (var entry in liveEntries)
+                {
+                    if (!_databaseService.Entries.ExistsByUrlAsync(entry.Url).Result)
+                    {
+                        _databaseService.Entries.AddAsync(entry).Wait();
+                        newLiveEntries.Add(entry);
+                    }
+                }
+            }
+            else
+            {
+                // Fallback se banco não disponível: todas são novas
+                newVodEntries = vodEntries;
+                newLiveEntries = liveEntries;
+            }
+
+            // PASSO 2: Sincronizar com arquivos TXT (backup)
+            // Adiciona apenas as entradas que foram inseridas no SQLite
+            var addedVod = MergeEntriesIntoDatabase(vodFilePath, newVodEntries);
+            var addedLive = MergeEntriesIntoDatabase(liveFilePath, newLiveEntries);
+
+            return (addedVod, addedLive);
         }
 
         private int MergeEntriesIntoDatabase(string filePath, IEnumerable<M3UEntry> entries)
@@ -704,10 +860,21 @@ namespace MeuGestorVODs
                     continue;
                 }
 
-                var safeName = (entry.Name ?? string.Empty).Replace("|", " ").Trim();
-                var safeGroup = (entry.GroupTitle ?? string.Empty).Replace("|", " ").Trim();
-                var safeUrl = entry.Url.Trim();
-                linesToAppend.Add($"{safeName}|{safeGroup}|{safeUrl}");
+                // Build M3U EXTINF line with all metadata
+                var tvgId = !string.IsNullOrWhiteSpace(entry.TvgId) ? entry.TvgId : entry.Id;
+                var tvgName = EscapeM3uAttribute(entry.Name);
+                var groupTitle = EscapeM3uAttribute(entry.GroupTitle);
+                var logoUrl = EscapeM3uAttribute(entry.LogoUrl);
+
+                var extinf = $"#EXTINF:-1 tvg-id=\"{EscapeM3uAttribute(tvgId)}\" tvg-name=\"{tvgName}\"";
+                if (!string.IsNullOrWhiteSpace(logoUrl))
+                {
+                    extinf += $" tvg-logo=\"{logoUrl}\"";
+                }
+                extinf += $" group-title=\"{groupTitle}\",{tvgName}";
+
+                linesToAppend.Add(extinf);
+                linesToAppend.Add(entry.Url.Trim());
             }
 
             if (linesToAppend.Count > 0)
@@ -715,7 +882,14 @@ namespace MeuGestorVODs
                 File.AppendAllLines(filePath, linesToAppend);
             }
 
-            return linesToAppend.Count;
+            return linesToAppend.Count / 2; // Each entry has 2 lines (EXTINF + URL)
+        }
+
+        private static string EscapeM3uAttribute(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return string.Empty;
+            return value.Replace("\"", "'");
         }
 
         private static HashSet<string> LoadExistingUrls(string filePath)
@@ -726,24 +900,54 @@ namespace MeuGestorVODs
                 return urls;
             }
 
-            foreach (var rawLine in File.ReadLines(filePath))
+            var lines = File.ReadAllLines(filePath);
+            var isM3uFormat = lines.Length > 0 && lines[0].Trim().StartsWith("#EXTM3U", StringComparison.OrdinalIgnoreCase);
+
+            if (isM3uFormat)
             {
-                var line = rawLine.Trim();
-                if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#", StringComparison.Ordinal))
+                // Parse M3U format
+                for (int i = 0; i < lines.Length - 1; i++)
                 {
-                    continue;
-                }
+                    var line = lines[i].Trim();
+                    if (!line.StartsWith("#EXTINF:", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
 
-                var parts = line.Split('|');
-                if (parts.Length == 0)
-                {
-                    continue;
-                }
+                    var nextLine = lines[i + 1].Trim();
+                    if (string.IsNullOrWhiteSpace(nextLine) || nextLine.StartsWith("#", StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
 
-                var url = parts[^1].Trim();
-                if (!string.IsNullOrWhiteSpace(url))
+                    if (!string.IsNullOrWhiteSpace(nextLine))
+                    {
+                        urls.Add(nextLine);
+                    }
+                }
+            }
+            else
+            {
+                // Parse old pipe-delimited format (backward compatibility)
+                foreach (var rawLine in lines)
                 {
-                    urls.Add(url);
+                    var line = rawLine.Trim();
+                    if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#", StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    var parts = line.Split('|');
+                    if (parts.Length == 0)
+                    {
+                        continue;
+                    }
+
+                    var url = parts[^1].Trim();
+                    if (!string.IsNullOrWhiteSpace(url))
+                    {
+                        urls.Add(url);
+                    }
                 }
             }
 
@@ -1280,18 +1484,84 @@ namespace MeuGestorVODs
             public string BrowserDownloadUrl { get; set; } = string.Empty;
         }
 
-        private void OpenVodLinksTxt_Click(object sender, RoutedEventArgs e)
+        private async void OpenVodLinksTxt_Click(object sender, RoutedEventArgs e)
         {
+            // Mostrar estatísticas do banco
+            if (_databaseService != null)
+            {
+                var count = await _databaseService.Entries.GetCountAsync();
+                var result = System.Windows.MessageBox.Show(
+                    $"Banco SQLite contém {count} entradas totais.\n\n" +
+                    "Deseja:\n" +
+                    "- Sim: Exportar banco para arquivo M3U\n" +
+                    "- Não: Abrir arquivo TXT legado",
+                    "Gerenciar Banco de Dados",
+                    MessageBoxButton.YesNoCancel,
+                    MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    await ExportDatabaseToM3uAsync();
+                    return;
+                }
+                else if (result == MessageBoxResult.Cancel)
+                {
+                    return;
+                }
+            }
+
             EnsureLinkDatabaseFiles();
             var filePath = Path.Combine(DownloadPath, VodLinksDatabaseFileName);
             OpenTextFileInNotepad(filePath, "VOD");
         }
 
-        private void OpenLiveLinksTxt_Click(object sender, RoutedEventArgs e)
+        private async void OpenLiveLinksTxt_Click(object sender, RoutedEventArgs e)
         {
-            EnsureLinkDatabaseFiles();
-            var filePath = Path.Combine(DownloadPath, LiveLinksDatabaseFileName);
-            OpenTextFileInNotepad(filePath, "Canais ao vivo");
+            // Reutilizar a mesma lógica do VOD
+            OpenVodLinksTxt_Click(sender, e);
+        }
+
+        private async Task ExportDatabaseToM3uAsync()
+        {
+            try
+            {
+                if (_databaseService == null) return;
+
+                StatusMessage = "Exportando banco para M3U...";
+                var entries = await _databaseService.Entries.GetAllAsync();
+                
+                var outputPath = Path.Combine(DownloadPath, "exportado_banco_completo.m3u");
+                var lines = new List<string> { "#EXTM3U" };
+
+                foreach (var entry in entries)
+                {
+                    var tvgId = !string.IsNullOrWhiteSpace(entry.TvgId) ? entry.TvgId : entry.Id;
+                    var extinf = $"#EXTINF:-1 tvg-id=\"{EscapeM3uAttribute(tvgId)}\" " +
+                                $"tvg-name=\"{EscapeM3uAttribute(entry.Name)}\" " +
+                                $"tvg-logo=\"{EscapeM3uAttribute(entry.LogoUrl)}\" " +
+                                $"group-title=\"{EscapeM3uAttribute(entry.GroupTitle)}\"," +
+                                EscapeM3uAttribute(entry.Name);
+                    
+                    lines.Add(extinf);
+                    lines.Add(entry.Url);
+                }
+
+                await File.WriteAllLinesAsync(outputPath, lines);
+                
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "notepad.exe",
+                    Arguments = $"\"{outputPath}\"",
+                    UseShellExecute = true
+                });
+
+                StatusMessage = $"Exportado {entries.Count} entradas para M3U";
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show($"Erro ao exportar: {ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+                StatusMessage = "Erro ao exportar banco";
+            }
         }
 
         private void OpenTextFileInNotepad(string filePath, string label)
@@ -1321,6 +1591,54 @@ namespace MeuGestorVODs
                 FileName = "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS",
                 UseShellExecute = true
             });
+        }
+
+        private async void ShowDatabaseStats_Click(object sender, RoutedEventArgs e)
+        {
+            if (_databaseService == null)
+            {
+                System.Windows.MessageBox.Show(
+                    "Banco de dados não está inicializado.",
+                    "Estatísticas",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                var totalCount = await _databaseService.Entries.GetCountAsync();
+                var allEntries = await _databaseService.Entries.GetAllAsync();
+                
+                var categories = allEntries
+                    .GroupBy(x => x.Category)
+                    .OrderByDescending(g => g.Count())
+                    .Take(10)
+                    .Select(g => $"  {g.Key}: {g.Count()}")
+                    .ToList();
+
+                var stats = $"📊 ESTATÍSTICAS DO BANCO DE DADOS SQLite\n\n" +
+                           $"Total de entradas: {totalCount}\n\n" +
+                           $"📁 Top 10 Categorias:\n" +
+                           string.Join("\n", categories) + "\n\n" +
+                           $"📍 Local do banco:\n{Path.Combine(DownloadPath, "database.sqlite")}";
+
+                System.Windows.MessageBox.Show(
+                    stats,
+                    "Estatísticas do Banco de Dados",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+
+                StatusMessage = $"Banco SQLite: {totalCount} entradas registradas";
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show(
+                    $"Erro ao obter estatísticas: {ex.Message}",
+                    "Erro",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

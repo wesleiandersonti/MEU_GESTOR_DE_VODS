@@ -173,6 +173,7 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Text="{Binding StatusMessage}" VerticalAlignment="Center"/>
                 <TextBlock Grid.Column="1" Text="{Binding CurrentVersionText}" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold"/>
@@ -180,7 +181,8 @@
                 <Button Grid.Column="3" Content="Voltar Versão" Click="RollbackVersion_Click" Padding="15,5" Margin="0,0,10,0" Background="#455A64" Foreground="White"/>
                 <Button Grid.Column="4" Content="Abrir TXT VOD" Click="OpenVodLinksTxt_Click" Padding="12,5" Margin="0,0,10,0"/>
                 <Button Grid.Column="5" Content="Abrir TXT Canais" Click="OpenLiveLinksTxt_Click" Padding="12,5" Margin="0,0,10,0"/>
-                <Button Grid.Column="6" Content="GitHub" Click="OpenGitHub_Click" Padding="15,5"/>
+                <Button Grid.Column="6" Content="Estatísticas BD" Click="ShowDatabaseStats_Click" Padding="12,5" Margin="0,0,10,0" Background="#673AB7" Foreground="White"/>
+                <Button Grid.Column="7" Content="GitHub" Click="OpenGitHub_Click" Padding="15,5"/>
             </Grid>
         </Border>
 

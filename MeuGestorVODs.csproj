@@ -14,4 +14,9 @@
     <Description>Gerenciador de VODs para IPTV M3U</Description>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.0" />
+    <PackageReference Include="Dapper" Version="2.1.28" />
+  </ItemGroup>
+
 </Project>

@@ -15,6 +15,8 @@ public class M3UEntry
     public string GroupTitle { get; set; } = string.Empty;
     public string Category { get; set; } = "Sem Categoria";
     public string SubCategory { get; set; } = "Geral";
+    public string LogoUrl { get; set; } = string.Empty;
+    public string TvgId { get; set; } = string.Empty;
     public bool IsSelected { get; set; }
 
     public string GroupDisplay => $"{Category} | {SubCategory}";
@@ -64,10 +66,12 @@ public static class M3UParser
             {
                 Url = nextLine,
                 Id = ExtractAttribute(line, "tvg-id") ?? Guid.NewGuid().ToString("N")[..8],
+                TvgId = ExtractAttribute(line, "tvg-id") ?? string.Empty,
                 Name = ExtractAttribute(line, "tvg-name") ?? ExtractName(line) ?? "Unknown",
                 GroupTitle = groupDisplay,
                 Category = category,
-                SubCategory = subCategory
+                SubCategory = subCategory,
+                LogoUrl = ExtractAttribute(line, "tvg-logo") ?? string.Empty
             });
         }
 
