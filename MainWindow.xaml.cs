@@ -1590,34 +1590,50 @@ namespace MeuGestorVODs
 
             window.Content = grid;
 
-            // Inicializa WebView2
-            webView.EnsureCoreWebView2Async(null).ContinueWith(_ =>
+            // Inicializa WebView2 com suporte a HTTP
+            var envOptions = new Microsoft.Web.WebView2.Core.CoreWebView2EnvironmentOptions
             {
-                Dispatcher.Invoke(() =>
+                AllowSingleSignOnUsingOSPrimaryAccount = false,
+                AdditionalBrowserArguments = "--disable-features=AutoupgradeMixedContent --allow-running-insecure-content --disable-web-security --ignore-certificate-errors"
+            };
+            
+            var userDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MeuGestorVODs", "WebView2Data");
+            
+            Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(null, userDataFolder, envOptions)
+                .ContinueWith(envTask =>
                 {
-                    try
+                    var environment = envTask.Result;
+                    Dispatcher.Invoke(async () =>
                     {
-                        // Permite conteúdo HTTP em páginas HTTPS (modo misto)
-                        webView.CoreWebView2.Settings.IsWebMessageEnabled = true;
-                        webView.CoreWebView2.Settings.AreDefaultScriptDialogsEnabled = true;
-                        webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
-                        webView.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = true;
-                        
-                        // Navega para o arquivo HTML local
-                        webView.Source = new Uri(htmlPath);
-                        
-                        StatusMessage = "LisoFlix Pro aberto em player interno seguro";
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Windows.MessageBox.Show(
-                            $"Erro ao carregar LisoFlix: {ex.Message}",
-                            "Erro",
-                            MessageBoxButton.OK,
-                            MessageBoxImage.Error);
-                    }
+                        try
+                        {
+                            await webView.EnsureCoreWebView2Async(environment);
+                            
+                            // Configurações para permitir HTTP
+                            webView.CoreWebView2.Settings.IsWebMessageEnabled = true;
+                            webView.CoreWebView2.Settings.AreDefaultScriptDialogsEnabled = true;
+                            webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
+                            webView.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = true;
+                            webView.CoreWebView2.Settings.IsZoomControlEnabled = true;
+                            
+                            // Desabilita restrições de conteúdo misto (HTTP em HTTPS)
+                            webView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = true;
+                            
+                            // Navega para o arquivo HTML local
+                            webView.Source = new Uri(htmlPath);
+                            
+                            StatusMessage = "LisoFlix aberto em player interno (HTTP/HTTPS habilitado)";
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Windows.MessageBox.Show(
+                                $"Erro ao carregar LisoFlix: {ex.Message}",
+                                "Erro",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Error);
+                        }
+                    });
                 });
-            });
 
             btnRecarregar.Click += (_, _) => webView.Reload();
             
