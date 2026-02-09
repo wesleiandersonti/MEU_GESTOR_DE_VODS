@@ -77,9 +77,11 @@
                     </Button.Content>
                     <Button.ContextMenu>
                         <ContextMenu>
-                            <MenuItem Header="Histórico de URLs" Click="ShowUrlHistory_Click"/>
-                            <MenuItem Header="Estatísticas BD" Click="ShowDatabaseStats_Click"/>
-                            <MenuItem Header="GitHub" Click="OpenGitHub_Click"/>
+                            <MenuItem Header="1 INICIO" Click="MainMenuHome_Click"/>
+                            <MenuItem Header="2 CONECTA XUI-ONE" Click="MainMenuConnectXuiOne_Click"/>
+                            <MenuItem Header="3 IP E PORTA" Click="MainMenuIpPort_Click"/>
+                            <MenuItem Header="4 YouTube_para_m3u" Click="MainMenuYouTubeToM3u_Click"/>
+                            <MenuItem Header="5 DARK M3U CHECKER" Click="MainMenuDarkM3uChecker_Click"/>
                         </ContextMenu>
                     </Button.ContextMenu>
                 </Button>
@@ -393,7 +395,7 @@
                         </Grid>
                     </Border>
 
-                    <TabControl Grid.Row="1" Margin="6">
+                    <TabControl Grid.Row="1" Margin="6" x:Name="MainMonitorTabs">
                         <TabItem Header="Downloads">
                             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
                                 <ItemsControl ItemsSource="{Binding Downloads}">

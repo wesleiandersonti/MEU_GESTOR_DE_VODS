@@ -22,6 +22,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using MeuGestorVODs.Repositories;
+using MySqlConnector;
 
 namespace MeuGestorVODs
 {
@@ -72,6 +73,7 @@ namespace MeuGestorVODs
         private const string DownloadStructureFileName = "estrutura_downloads.txt";
         private const string VodLinksDatabaseFileName = "banco_vod_links.txt";
         private const string LiveLinksDatabaseFileName = "banco_canais_ao_vivo.txt";
+        private const string XuiOneConnectionFileName = "xui_one_connection.json";
         private static readonly HashSet<string> LiveCategoryNames = new(StringComparer.OrdinalIgnoreCase)
         {
             "Canais",
@@ -899,6 +901,661 @@ namespace MeuGestorVODs
 
             button.ContextMenu.PlacementTarget = button;
             button.ContextMenu.IsOpen = true;
+        }
+
+        private void MainMenuHome_Click(object sender, RoutedEventArgs e)
+        {
+            _selectedCategoryFilter = null;
+            _selectedGroupKeyFilter = null;
+            GroupFilterInfoText = string.Empty;
+            GroupPanelVisibility = Visibility.Collapsed;
+
+            if (!string.Equals(SelectedAnalysisFilter, "Todos", StringComparison.OrdinalIgnoreCase))
+            {
+                SelectedAnalysisFilter = "Todos";
+            }
+
+            if (!string.IsNullOrWhiteSpace(FilterText))
+            {
+                FilterText = string.Empty;
+            }
+            else
+            {
+                ApplyFilter();
+            }
+
+            ApplyMonitorPanelLayout(MonitorPanelLayout.Normal);
+            if (MainMonitorTabs != null)
+            {
+                MainMonitorTabs.SelectedIndex = 0;
+            }
+
+            M3UUrlComboBox?.Focus();
+            StatusMessage = "Inicio carregado.";
+        }
+
+        private void MainMenuConnectXuiOne_Click(object sender, RoutedEventArgs e)
+        {
+            var saved = LoadXuiOneConnectionConfig();
+
+            var window = new System.Windows.Window
+            {
+                Title = "Conecta XUI-ONE (MariaDB)",
+                Width = 520,
+                Height = 370,
+                MinWidth = 480,
+                MinHeight = 340,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Owner = this,
+                ResizeMode = ResizeMode.NoResize,
+                Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(246, 248, 252))
+            };
+
+            var root = new Grid { Margin = new Thickness(14) };
+            for (var i = 0; i < 8; i++)
+            {
+                root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            }
+            root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(130) });
+            root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            AddConnectionField(root, 0, "Host:", out var hostBox, saved?.Host ?? "127.0.0.1");
+            AddConnectionField(root, 1, "Porta:", out var portBox, saved?.Port.ToString() ?? "3306");
+            AddConnectionField(root, 2, "Banco:", out var databaseBox, saved?.Database ?? "xui" );
+            AddConnectionField(root, 3, "Usuario:", out var userBox, saved?.User ?? "root");
+
+            var passwordLabel = new TextBlock
+            {
+                Text = "Senha:",
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 8, 6),
+                FontWeight = FontWeights.SemiBold
+            };
+            Grid.SetRow(passwordLabel, 4);
+            root.Children.Add(passwordLabel);
+
+            var passwordBox = new PasswordBox
+            {
+                Password = saved?.Password ?? string.Empty,
+                Height = 28,
+                Margin = new Thickness(0, 0, 0, 6)
+            };
+            Grid.SetRow(passwordBox, 4);
+            Grid.SetColumn(passwordBox, 1);
+            root.Children.Add(passwordBox);
+
+            var info = new TextBlock
+            {
+                Text = "Conexao para envio de conteudos ao XUI-ONE. Os dados ficam salvos localmente no seu perfil.",
+                TextWrapping = TextWrapping.Wrap,
+                Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 80, 95)),
+                Margin = new Thickness(0, 8, 0, 10)
+            };
+            Grid.SetRow(info, 6);
+            Grid.SetColumnSpan(info, 2);
+            root.Children.Add(info);
+
+            var statusText = new TextBlock
+            {
+                Text = "Preencha os dados e clique em Testar.",
+                Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(45, 55, 70)),
+                Margin = new Thickness(0, 0, 0, 12)
+            };
+            Grid.SetRow(statusText, 7);
+            Grid.SetColumnSpan(statusText, 2);
+            root.Children.Add(statusText);
+
+            var actions = new System.Windows.Controls.StackPanel
+            {
+                Orientation = System.Windows.Controls.Orientation.Horizontal,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Right
+            };
+
+            var testButton = new System.Windows.Controls.Button { Content = "Testar", Width = 90, Margin = new Thickness(0, 0, 8, 0) };
+            var saveButton = new System.Windows.Controls.Button { Content = "Salvar", Width = 90, Margin = new Thickness(0, 0, 8, 0) };
+            var cancelButton = new System.Windows.Controls.Button { Content = "Fechar", Width = 90 };
+
+            actions.Children.Add(testButton);
+            actions.Children.Add(saveButton);
+            actions.Children.Add(cancelButton);
+
+            Grid.SetRow(actions, 9);
+            Grid.SetColumnSpan(actions, 2);
+            root.Children.Add(actions);
+
+            window.Content = root;
+
+            async Task<(bool ok, string message)> TestConnectionAsync()
+            {
+                if (!uint.TryParse(portBox.Text.Trim(), out var port))
+                {
+                    return (false, "Porta invalida.");
+                }
+
+                var host = hostBox.Text.Trim();
+                var database = databaseBox.Text.Trim();
+                var user = userBox.Text.Trim();
+                var password = passwordBox.Password;
+
+                if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(database) || string.IsNullOrWhiteSpace(user))
+                {
+                    return (false, "Host, banco e usuario sao obrigatorios.");
+                }
+
+                try
+                {
+                    var connectionString = BuildXuiOneConnectionString(host, port, database, user, password);
+                    await using var conn = new MySqlConnection(connectionString);
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                    await conn.OpenAsync(cts.Token);
+
+                    await using var cmd = new MySqlCommand("SELECT VERSION();", conn);
+                    var version = Convert.ToString(await cmd.ExecuteScalarAsync(cts.Token)) ?? "desconhecida";
+                    return (true, $"Conexao OK. MariaDB/MySQL: {version}");
+                }
+                catch (Exception ex)
+                {
+                    return (false, $"Falha na conexao: {ex.Message}");
+                }
+            }
+
+            testButton.Click += async (_, _) =>
+            {
+                testButton.IsEnabled = false;
+                saveButton.IsEnabled = false;
+                statusText.Text = "Testando conexao...";
+
+                var result = await TestConnectionAsync();
+                statusText.Text = result.message;
+                statusText.Foreground = new SolidColorBrush(result.ok ? System.Windows.Media.Color.FromRgb(30, 120, 52) : System.Windows.Media.Color.FromRgb(185, 40, 40));
+
+                testButton.IsEnabled = true;
+                saveButton.IsEnabled = true;
+            };
+
+            saveButton.Click += async (_, _) =>
+            {
+                testButton.IsEnabled = false;
+                saveButton.IsEnabled = false;
+                statusText.Text = "Validando e salvando conexao...";
+
+                var result = await TestConnectionAsync();
+                if (!result.ok)
+                {
+                    statusText.Text = result.message;
+                    statusText.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(185, 40, 40));
+                    testButton.IsEnabled = true;
+                    saveButton.IsEnabled = true;
+                    return;
+                }
+
+                var config = new XuiOneConnectionConfig
+                {
+                    Host = hostBox.Text.Trim(),
+                    Port = uint.TryParse(portBox.Text.Trim(), out var parsedPort) ? parsedPort : 3306,
+                    Database = databaseBox.Text.Trim(),
+                    User = userBox.Text.Trim(),
+                    PasswordProtected = ProtectSecret(passwordBox.Password)
+                };
+
+                SaveXuiOneConnectionConfig(config);
+
+                statusText.Text = "Conexao salva com sucesso.";
+                statusText.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(30, 120, 52));
+                StatusMessage = "Conexao XUI-ONE salva e validada.";
+                await Task.Delay(400);
+                window.Close();
+            };
+
+            cancelButton.Click += (_, _) => window.Close();
+
+            window.ShowDialog();
+        }
+
+        private void MainMenuIpPort_Click(object sender, RoutedEventArgs e)
+        {
+            System.Windows.MessageBox.Show(
+                "Modulo IP E PORTA em desenvolvimento.\n\nEm breve vamos incluir esta funcionalidade.",
+                "IP E PORTA",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            StatusMessage = "Modulo IP E PORTA ainda em desenvolvimento.";
+        }
+
+        private void MainMenuYouTubeToM3u_Click(object sender, RoutedEventArgs e)
+        {
+            var window = new System.Windows.Window
+            {
+                Title = "YouTube para M3U",
+                Width = 700,
+                Height = 520,
+                MinWidth = 640,
+                MinHeight = 460,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Owner = this,
+                Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(246, 248, 252))
+            };
+
+            var root = new Grid { Margin = new Thickness(14) };
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(130) });
+            root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            AddConnectionField(root, 0, "Nome da lista:", out var listNameBox, "YouTube Playlist");
+            AddConnectionField(root, 1, "Grupo M3U:", out var groupBox, "YouTube | Conteudos");
+
+            var outputLabel = new TextBlock
+            {
+                Text = "Arquivo saida:",
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 8, 6),
+                FontWeight = FontWeights.SemiBold
+            };
+            Grid.SetRow(outputLabel, 2);
+            root.Children.Add(outputLabel);
+
+            var outputRow = new Grid { Margin = new Thickness(0, 0, 0, 6) };
+            outputRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            outputRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var outputPathBox = new System.Windows.Controls.TextBox
+            {
+                Text = Path.Combine(DownloadPath, $"youtube_{DateTime.Now:yyyyMMdd_HHmm}.m3u"),
+                Height = 28
+            };
+            outputRow.Children.Add(outputPathBox);
+
+            var browseButton = new System.Windows.Controls.Button
+            {
+                Content = "Procurar",
+                Width = 90,
+                Margin = new Thickness(8, 0, 0, 0)
+            };
+            browseButton.Click += (_, _) =>
+            {
+                var dialog = new Microsoft.Win32.SaveFileDialog
+                {
+                    Filter = "Playlist M3U (*.m3u)|*.m3u|Todos os arquivos (*.*)|*.*",
+                    FileName = Path.GetFileName(outputPathBox.Text),
+                    InitialDirectory = Path.GetDirectoryName(outputPathBox.Text)
+                };
+
+                if (dialog.ShowDialog() == true)
+                {
+                    outputPathBox.Text = dialog.FileName;
+                }
+            };
+            Grid.SetColumn(browseButton, 1);
+            outputRow.Children.Add(browseButton);
+
+            Grid.SetRow(outputRow, 2);
+            Grid.SetColumn(outputRow, 1);
+            root.Children.Add(outputRow);
+
+            var urlsLabel = new TextBlock
+            {
+                Text = "Links YouTube:",
+                VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(0, 2, 8, 6),
+                FontWeight = FontWeights.SemiBold
+            };
+            Grid.SetRow(urlsLabel, 3);
+            root.Children.Add(urlsLabel);
+
+            var urlsBox = new System.Windows.Controls.TextBox
+            {
+                AcceptsReturn = true,
+                TextWrapping = TextWrapping.Wrap,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                MinHeight = 220
+            };
+            Grid.SetRow(urlsBox, 4);
+            Grid.SetColumn(urlsBox, 1);
+            root.Children.Add(urlsBox);
+
+            var info = new TextBlock
+            {
+                Text = "Use 1 URL por linha. Opcional: Titulo|URL para nome personalizado no M3U.",
+                Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 80, 95)),
+                Margin = new Thickness(0, 8, 0, 10),
+                TextWrapping = TextWrapping.Wrap
+            };
+            Grid.SetRow(info, 5);
+            Grid.SetColumnSpan(info, 2);
+            root.Children.Add(info);
+
+            var actions = new System.Windows.Controls.StackPanel
+            {
+                Orientation = System.Windows.Controls.Orientation.Horizontal,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Right
+            };
+
+            var generateButton = new System.Windows.Controls.Button { Content = "Gerar M3U", Width = 110, Margin = new Thickness(0, 0, 8, 0) };
+            var closeButton = new System.Windows.Controls.Button { Content = "Fechar", Width = 90 };
+            actions.Children.Add(generateButton);
+            actions.Children.Add(closeButton);
+            Grid.SetRow(actions, 6);
+            Grid.SetColumnSpan(actions, 2);
+            root.Children.Add(actions);
+
+            generateButton.Click += (_, _) =>
+            {
+                var groupTitle = string.IsNullOrWhiteSpace(groupBox.Text) ? "YouTube | Conteudos" : groupBox.Text.Trim();
+                var listName = string.IsNullOrWhiteSpace(listNameBox.Text) ? "YouTube Playlist" : listNameBox.Text.Trim();
+                var outputPath = outputPathBox.Text.Trim();
+
+                if (string.IsNullOrWhiteSpace(outputPath))
+                {
+                    System.Windows.MessageBox.Show("Informe o arquivo de saida.", "YouTube para M3U", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var rows = urlsBox.Text
+                    .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(x => x.Trim())
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .ToList();
+
+                if (rows.Count == 0)
+                {
+                    System.Windows.MessageBox.Show("Adicione pelo menos um link do YouTube.", "YouTube para M3U", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var lines = new List<string>
+                {
+                    "#EXTM3U",
+                    $"#PLAYLIST:{EscapeM3uAttribute(listName)}"
+                };
+
+                var added = 0;
+                var skipped = 0;
+
+                foreach (var row in rows)
+                {
+                    var title = string.Empty;
+                    var url = row;
+
+                    var separatorIndex = row.IndexOf('|');
+                    if (separatorIndex > 0)
+                    {
+                        title = row[..separatorIndex].Trim();
+                        url = row[(separatorIndex + 1)..].Trim();
+                    }
+
+                    if (!Uri.TryCreate(url, UriKind.Absolute, out _) || !IsYouTubeUrl(url))
+                    {
+                        skipped++;
+                        continue;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(title))
+                    {
+                        title = $"YouTube Item {added + 1}";
+                    }
+
+                    var safeTitle = EscapeM3uAttribute(title);
+                    var safeGroup = EscapeM3uAttribute(groupTitle);
+
+                    lines.Add($"#EXTINF:-1 tvg-name=\"{safeTitle}\" group-title=\"{safeGroup}\",{safeTitle}");
+                    lines.Add(url);
+                    added++;
+                }
+
+                if (added == 0)
+                {
+                    System.Windows.MessageBox.Show("Nenhum link valido de YouTube foi encontrado.", "YouTube para M3U", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var dir = Path.GetDirectoryName(outputPath);
+                if (!string.IsNullOrWhiteSpace(dir) && !Directory.Exists(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                }
+
+                File.WriteAllLines(outputPath, lines);
+
+                StatusMessage = $"M3U YouTube gerado: {added} link(s), {skipped} ignorado(s).";
+                var openNow = System.Windows.MessageBox.Show(
+                    $"Arquivo criado com sucesso.\n\nAdicionados: {added}\nIgnorados: {skipped}\n\nAbrir no Bloco de Notas agora?",
+                    "YouTube para M3U",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Information);
+
+                if (openNow == MessageBoxResult.Yes)
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "notepad.exe",
+                        Arguments = $"\"{outputPath}\"",
+                        UseShellExecute = true
+                    });
+                }
+            };
+
+            closeButton.Click += (_, _) => window.Close();
+
+            window.Content = root;
+            window.ShowDialog();
+        }
+
+        private void MainMenuDarkM3uChecker_Click(object sender, RoutedEventArgs e)
+        {
+            var window = new System.Windows.Window
+            {
+                Title = "DARK M3U CHECKER",
+                Width = 620,
+                Height = 420,
+                MinWidth = 560,
+                MinHeight = 360,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Owner = this,
+                Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(246, 248, 252))
+            };
+
+            var root = new Grid { Margin = new Thickness(14) };
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            var title = new TextBlock
+            {
+                Text = "DARK M3U CHECKER",
+                FontSize = 18,
+                FontWeight = FontWeights.Bold,
+                Margin = new Thickness(0, 0, 0, 8)
+            };
+            Grid.SetRow(title, 0);
+            root.Children.Add(title);
+
+            var subtitle = new TextBlock
+            {
+                Text = "Modulo reservado para analise avancada de playlists e verificacao aprofundada de links.",
+                TextWrapping = TextWrapping.Wrap,
+                Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(70, 80, 95)),
+                Margin = new Thickness(0, 0, 0, 12)
+            };
+            Grid.SetRow(subtitle, 1);
+            root.Children.Add(subtitle);
+
+            var notes = new System.Windows.Controls.TextBox
+            {
+                IsReadOnly = true,
+                TextWrapping = TextWrapping.Wrap,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                Text =
+                    "Planejamento desta tela:\n\n" +
+                    "- Verificacao de disponibilidade por lote com estrategias alternativas\n" +
+                    "- Diagnostico de bloqueios por servidor/CDN\n" +
+                    "- Relatorio detalhado de falhas por categoria\n" +
+                    "- Exportacao de resultados tecnicos\n\n" +
+                    "Status atual: em desenvolvimento."
+            };
+            Grid.SetRow(notes, 2);
+            root.Children.Add(notes);
+
+            var closeButton = new System.Windows.Controls.Button
+            {
+                Content = "Fechar",
+                Width = 100,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
+                Margin = new Thickness(0, 10, 0, 0),
+                IsDefault = true
+            };
+            closeButton.Click += (_, _) => window.Close();
+            Grid.SetRow(closeButton, 3);
+            root.Children.Add(closeButton);
+
+            window.Content = root;
+            window.ShowDialog();
+
+            StatusMessage = "Modulo DARK M3U CHECKER aberto.";
+        }
+
+        private static bool IsYouTubeUrl(string url)
+        {
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            {
+                return false;
+            }
+
+            var host = uri.Host.ToLowerInvariant();
+            return host.Contains("youtube.com") || host.Contains("youtu.be");
+        }
+
+        private static void AddConnectionField(Grid root, int row, string label, out System.Windows.Controls.TextBox textBox, string initialValue)
+        {
+            var textLabel = new TextBlock
+            {
+                Text = label,
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 8, 6),
+                FontWeight = FontWeights.SemiBold
+            };
+            Grid.SetRow(textLabel, row);
+            root.Children.Add(textLabel);
+
+            textBox = new System.Windows.Controls.TextBox
+            {
+                Text = initialValue,
+                Height = 28,
+                Margin = new Thickness(0, 0, 0, 6)
+            };
+
+            Grid.SetRow(textBox, row);
+            Grid.SetColumn(textBox, 1);
+            root.Children.Add(textBox);
+        }
+
+        private static string BuildXuiOneConnectionString(string host, uint port, string database, string user, string password)
+        {
+            var builder = new MySqlConnectionStringBuilder
+            {
+                Server = host,
+                Port = port,
+                Database = database,
+                UserID = user,
+                Password = password,
+                CharacterSet = "utf8mb4",
+                SslMode = MySqlSslMode.Preferred,
+                ConnectionTimeout = 8,
+                DefaultCommandTimeout = 10,
+                AllowUserVariables = true
+            };
+
+            return builder.ConnectionString;
+        }
+
+        private XuiOneConnectionConfig? LoadXuiOneConnectionConfig()
+        {
+            try
+            {
+                var path = GetXuiOneConnectionFilePath();
+                if (!File.Exists(path))
+                {
+                    return null;
+                }
+
+                var json = File.ReadAllText(path);
+                var config = JsonSerializer.Deserialize<XuiOneConnectionConfig>(json);
+                if (config == null)
+                {
+                    return null;
+                }
+
+                config.Password = UnprotectSecret(config.PasswordProtected);
+                return config;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private void SaveXuiOneConnectionConfig(XuiOneConnectionConfig config)
+        {
+            var path = GetXuiOneConnectionFilePath();
+            var directory = Path.GetDirectoryName(path);
+            if (!string.IsNullOrWhiteSpace(directory) && !Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            var json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(path, json);
+        }
+
+        private static string GetXuiOneConnectionFilePath()
+        {
+            var baseFolder = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "MeuGestorVODs");
+            return Path.Combine(baseFolder, XuiOneConnectionFileName);
+        }
+
+        private static string ProtectSecret(string secret)
+        {
+            if (string.IsNullOrEmpty(secret))
+            {
+                return string.Empty;
+            }
+
+            var bytes = System.Text.Encoding.UTF8.GetBytes(secret);
+            var protectedBytes = ProtectedData.Protect(bytes, null, DataProtectionScope.CurrentUser);
+            return Convert.ToBase64String(protectedBytes);
+        }
+
+        private static string UnprotectSecret(string protectedSecret)
+        {
+            if (string.IsNullOrWhiteSpace(protectedSecret))
+            {
+                return string.Empty;
+            }
+
+            try
+            {
+                var bytes = Convert.FromBase64String(protectedSecret);
+                var unprotected = ProtectedData.Unprotect(bytes, null, DataProtectionScope.CurrentUser);
+                return System.Text.Encoding.UTF8.GetString(unprotected);
+            }
+            catch
+            {
+                return string.Empty;
+            }
         }
 
         private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -3938,6 +4595,18 @@ namespace MeuGestorVODs
     {
         public string Category { get; set; } = string.Empty;
         public int Count { get; set; }
+    }
+
+    public class XuiOneConnectionConfig
+    {
+        public string Host { get; set; } = "127.0.0.1";
+        public uint Port { get; set; } = 3306;
+        public string Database { get; set; } = "xui";
+        public string User { get; set; } = "root";
+        public string PasswordProtected { get; set; } = string.Empty;
+
+        [JsonIgnore]
+        public string Password { get; set; } = string.Empty;
     }
 
     public class DownloadItem : INotifyPropertyChanged
