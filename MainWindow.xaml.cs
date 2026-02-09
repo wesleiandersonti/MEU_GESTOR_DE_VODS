@@ -23,6 +23,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using MeuGestorVODs.Repositories;
 using MySqlConnector;
+using Microsoft.Web.WebView2.Wpf;
 
 namespace MeuGestorVODs
 {
@@ -1489,18 +1490,157 @@ namespace MeuGestorVODs
 
         private void MainMenuLisoFlix_Click(object sender, RoutedEventArgs e)
         {
-            if (TryOpenIntegratedHtml("LisoFlix", LisoFlixHtmlFileName))
+            var candidates = new[]
             {
+                Path.Combine(AppContext.BaseDirectory, LisoFlixHtmlFileName),
+                Path.Combine(Environment.CurrentDirectory, LisoFlixHtmlFileName),
+                Path.Combine(Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..")), LisoFlixHtmlFileName)
+            };
+
+            var filePath = candidates.FirstOrDefault(File.Exists);
+            if (string.IsNullOrWhiteSpace(filePath))
+            {
+                System.Windows.MessageBox.Show(
+                    "Arquivo HTML do modulo LisoFlix nao encontrado:\n- " + LisoFlixHtmlFileName,
+                    "LisoFlix",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                StatusMessage = "Modulo LisoFlix sem HTML integrado no momento.";
                 return;
             }
 
-            System.Windows.MessageBox.Show(
-                "Arquivo HTML do modulo LisoFlix nao encontrado:\n- " + LisoFlixHtmlFileName,
-                "LisoFlix",
-                MessageBoxButton.OK,
-                MessageBoxImage.Warning);
+            // Abre LisoFlix em janela interna com WebView2
+            OpenLisoFlixInWebView(filePath);
+        }
 
-            StatusMessage = "Modulo LisoFlix sem HTML integrado no momento.";
+        private void OpenLisoFlixInWebView(string htmlPath)
+        {
+            var window = new System.Windows.Window
+            {
+                Title = "LisoFlix Pro - Player Interno",
+                Width = 1280,
+                Height = 800,
+                MinWidth = 800,
+                MinHeight = 600,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Owner = this,
+                Background = System.Windows.Media.Brushes.Black
+            };
+
+            var grid = new Grid();
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+
+            // Barra de ferramentas superior
+            var toolbar = new System.Windows.Controls.StackPanel 
+            { 
+                Orientation = System.Windows.Controls.Orientation.Horizontal,
+                Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(20, 20, 20)),
+                Height = 40
+            };
+            
+            var btnVoltar = new System.Windows.Controls.Button 
+            { 
+                Content = "← Voltar", 
+                Width = 100, 
+                Margin = new Thickness(5),
+                Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(229, 9, 20)),
+                Foreground = System.Windows.Media.Brushes.White,
+                BorderThickness = new Thickness(0)
+            };
+            btnVoltar.Click += (_, _) => window.Close();
+            
+            var btnRecarregar = new System.Windows.Controls.Button 
+            { 
+                Content = "↻ Recarregar", 
+                Width = 100, 
+                Margin = new Thickness(5),
+                Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(51, 51, 51)),
+                Foreground = System.Windows.Media.Brushes.White,
+                BorderThickness = new Thickness(0)
+            };
+            
+            var btnHttp = new System.Windows.Controls.Button 
+            { 
+                Content = "🔓 Permitir HTTP", 
+                Width = 130, 
+                Margin = new Thickness(5),
+                Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(51, 51, 51)),
+                Foreground = System.Windows.Media.Brushes.White,
+                BorderThickness = new Thickness(0),
+                ToolTip = "Clique se o conteúdo não carregar (permite conteúdo HTTP misto)"
+            };
+            
+            toolbar.Children.Add(btnVoltar);
+            toolbar.Children.Add(btnRecarregar);
+            toolbar.Children.Add(btnHttp);
+            
+            Grid.SetRow(toolbar, 0);
+            grid.Children.Add(toolbar);
+
+            // WebView2
+            var webView = new Microsoft.Web.WebView2.Wpf.WebView2();
+            webView.CreationProperties = new Microsoft.Web.WebView2.Wpf.CoreWebView2CreationProperties
+            {
+                UserDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MeuGestorVODs", "WebView2Data")
+            };
+            
+            Grid.SetRow(webView, 1);
+            grid.Children.Add(webView);
+
+            window.Content = grid;
+
+            // Inicializa WebView2
+            webView.EnsureCoreWebView2Async(null).ContinueWith(_ =>
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    try
+                    {
+                        // Permite conteúdo HTTP em páginas HTTPS (modo misto)
+                        webView.CoreWebView2.Settings.IsWebMessageEnabled = true;
+                        webView.CoreWebView2.Settings.AreDefaultScriptDialogsEnabled = true;
+                        webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
+                        webView.CoreWebView2.Settings.AreBrowserAcceleratorKeysEnabled = true;
+                        
+                        // Navega para o arquivo HTML local
+                        webView.Source = new Uri(htmlPath);
+                        
+                        StatusMessage = "LisoFlix Pro aberto em player interno seguro";
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Windows.MessageBox.Show(
+                            $"Erro ao carregar LisoFlix: {ex.Message}",
+                            "Erro",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Error);
+                    }
+                });
+            });
+
+            btnRecarregar.Click += (_, _) => webView.Reload();
+            
+            btnHttp.Click += (_, _) =>
+            {
+                // Mostra aviso sobre segurança e permite HTTP
+                var result = System.Windows.MessageBox.Show(
+                    "ATENÇÃO: Permitir conteúdo HTTP não criptografado pode representar risco de segurança.\n\n" +
+                    "Use esta opção apenas se o conteúdo não estiver carregando e você confiar na fonte.\n\n" +
+                    "Deseja continuar?",
+                    "Permitir HTTP",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+                
+                if (result == MessageBoxResult.Yes)
+                {
+                    // Recarrega com flags menos restritivas
+                    webView.Reload();
+                    StatusMessage = "Modo HTTP misto ativado para LisoFlix";
+                }
+            };
+
+            window.Show();
         }
 
         private bool TryOpenIntegratedHtml(string moduleName, string fileName)

@@ -1,13 +1,11 @@
 {
-  "version": "1.0.31",
-  "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.31/MeuGestorVODs-Setup-v1.0.31.exe",
+  "version": "1.0.32",
+  "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.32/MeuGestorVODs-Setup-v1.0.32.exe",
   "sha256": "",
   "notes": [
-    "LisoFlix Pro: Configuracao via localStorage (sem credenciais hardcoded)",
-    "LisoFlix Pro: Suporte a HTTPS por padrao",
-    "LisoFlix Pro: Lazy loading e paginacao para catalogos grandes",
-    "LisoFlix Pro: Botao 'Reproduzir na TV' para dispositivos em rede local",
-    "LisoFlix Pro: Geracao de QR Code para mobile",
-    "LisoFlix Pro: Copiar link do stream",
+    "LisoFlix Pro: Agora roda dentro do app (WebView2 integrado)",
+    "LisoFlix Pro: Compatibilidade com HTTP e HTTPS",
+    "LisoFlix Pro: Botao 'Permitir HTTP' para conteudo misto",
+    "LisoFlix Pro: Interface segura sem vazamento de dados"
   ]
 }
