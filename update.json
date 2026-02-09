@@ -1,14 +1,14 @@
 {
-  "version": "1.0.42",
-  "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.42/MeuGestorVODs-Setup-v1.0.42.exe",
+  "version": "1.0.43",
+  "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.43/MeuGestorVODs-Setup-v1.0.43.exe",
   "sha256": "",
   "notes": [
+    "CORREÇÃO CRÍTICA: LisoFlix e DARK M3U CHECKER agora abrem corretamente nas abas",
+    "CORREÇÃO: Reestruturado layout - TabControl movido para área de conteúdo principal",
+    "CORREÇÃO: Conteúdo dos módulos agora é exibido corretamente ao abrir",
+    "CORREÇÃO: WebView2 dimensionado corretamente com Stretch",
+    "Melhoria: Grid principal do sistema agora é primeira aba do TabControl",
     "Novo: Versão atual fica vermelha quando há atualização disponível",
-    "Novo: Verificação automática de atualização ao iniciar o aplicativo",
-    "Novo: Propriedade IsUpdateAvailable no ViewModel",
-    "Melhoria: Indicador visual de nova versão no rodapé",
-    "Correção: LisoFlix e DARK M3U CHECKER carregam corretamente nas abas",
-    "Correção: WebView2 inicializado corretamente",
     "Novo: Sistema de cache de progresso de vídeo no LisoFlix"
   ]
 }

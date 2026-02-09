@@ -145,17 +145,7 @@
                            VerticalAlignment="Center"
                            Margin="10,0,20,0"/>
                 
-                <!-- Chrome Tabs for Extra Modules -->
-                <TabControl Grid.Column="2" 
-                            x:Name="ChromeTabControl"
-                            Style="{StaticResource ChromeTabControlStyle}"
-                            Margin="10,4,10,0"
-                            Visibility="Collapsed"
-                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                    <TabControl.Resources>
-                        <Style TargetType="TabItem" BasedOn="{StaticResource ChromeTabItemStyle}"/>
-                    </TabControl.Resources>
-                </TabControl>
+
                 
                 <!-- Theme Button -->
                 <Button Grid.Column="3"
@@ -234,8 +224,18 @@
             </Grid>
         </Border>
 
-        <!-- Main Content Area -->
-        <Grid Grid.Row="1" Background="{DynamicResource AppBackgroundBrush}">
+        <!-- Main Content Area with Tabs -->
+        <TabControl Grid.Row="1" 
+                    x:Name="ChromeTabControl"
+                    Style="{StaticResource ChromeTabControlStyle}"
+                    Background="{DynamicResource AppBackgroundBrush}">
+            <TabControl.Resources>
+                <Style TargetType="TabItem" BasedOn="{StaticResource ChromeTabItemStyle}"/>
+            </TabControl.Resources>
+            
+            <!-- Tab 1: Main Application Content -->
+            <TabItem Header="MEU GESTOR DE VODS">
+                <Grid Background="{DynamicResource AppBackgroundBrush}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
@@ -713,5 +713,7 @@
                         </StackPanel>
                     </Border>
                 </Grid>
-            </Grid>
+            </TabItem>
+        </TabControl>
+    </Grid>
 </Window>

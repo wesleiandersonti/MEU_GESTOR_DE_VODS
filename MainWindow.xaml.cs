@@ -1939,9 +1939,6 @@ namespace MeuGestorVODs
                 }
             }
 
-            // Torna o TabControl visível
-            ChromeTabControl.Visibility = Visibility.Visible;
-
             // Cria nova aba
             var newTab = new TabItem 
             { 
@@ -1951,8 +1948,11 @@ namespace MeuGestorVODs
 
             // Cria o container com WebView2
             var grid = new Grid();
+            grid.HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch;
+            grid.VerticalAlignment = System.Windows.VerticalAlignment.Stretch;
             grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
             // Barra de ferramentas
             var toolbar = new System.Windows.Controls.StackPanel 
@@ -1964,6 +1964,8 @@ namespace MeuGestorVODs
 
             // WebView2 (declarar antes dos event handlers)
             var webView = new WebView2();
+            webView.HorizontalAlignment = System.Windows.HorizontalAlignment.Stretch;
+            webView.VerticalAlignment = System.Windows.VerticalAlignment.Stretch;
 
             var btnVoltar = new System.Windows.Controls.Button 
             { 
