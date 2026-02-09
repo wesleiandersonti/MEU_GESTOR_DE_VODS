@@ -1,11 +1,11 @@
 {
-  "version": "1.0.25",
-  "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.25/MeuGestorVODs-Setup-v1.0.25.exe",
+  "version": "1.0.26",
+  "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.26/MeuGestorVODs-Setup-v1.0.26.exe",
   "sha256": "",
   "notes": [
-    "Atualizador SaaS via manifesto publico (sem login no app)",
-    "Exibicao das melhorias da versao no dialogo de atualizacao",
-    "Melhorias de estabilidade, descarte de recursos e assincronia",
-    "Controle de concorrencia no download e filtro LIVE por categoria"
+    "Reducao de falsos OFFLINE na analise de streams",
+    "Fallback mais robusto HEAD -> GET para links m3u8",
+    "Timeout e retry ajustados para listas grandes",
+    "Melhorias de estabilidade no checker"
   ]
 }
