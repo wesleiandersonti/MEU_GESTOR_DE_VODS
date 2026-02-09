@@ -115,6 +115,7 @@
                         Margin="8,4,4,4"
                         Background="Transparent"
                         BorderThickness="0"
+                        Click="ThemeButton_Click"
                         ToolTip="Menu">
                     <Grid Width="18" Height="14">
                         <Border Height="2" Width="18" CornerRadius="1" Background="#5F6368" VerticalAlignment="Top"/>
