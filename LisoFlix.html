@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LisoFlix</title>
+<title>LisoFlix Pro</title>
 <style>
   @import url("https://fonts.cdnfonts.com/css/netflix-sans");
 
@@ -64,19 +64,18 @@
     -ms-overflow-style: none;
     flex-grow: 1;
     justify-content: flex-end;
+    align-items: center;
   }
-  nav::-webkit-scrollbar {
-    display: none;
-  }
+  nav::-webkit-scrollbar { display: none; }
 
-  nav button {
+  nav button, .config-btn {
     background: none;
     border: none;
     color: var(--netflix-light-gray);
     font-size: 1em;
     font-weight: bold;
     cursor: pointer;
-    padding: 6px 0;
+    padding: 6px 12px;
     border-bottom: 3px solid transparent;
     transition: color 0.3s ease, border-bottom 0.3s ease;
     flex-shrink: 0;
@@ -85,6 +84,14 @@
   nav button.active {
     color: var(--netflix-white);
     border-bottom: 3px solid var(--netflix-red);
+  }
+
+  .config-btn {
+    background: var(--netflix-red);
+    color: white;
+    border-radius: 4px;
+    border: none;
+    margin-left: 10px;
   }
 
   .hero-banner {
@@ -98,32 +105,13 @@
     margin-bottom: 20px;
     padding: 0 4%;
   }
-  
-  .hero-content {
-    max-width: 500px;
-    color: var(--netflix-white);
-  }
-  
-  .hero-title {
-    font-size: 3rem;
-    font-weight: bold;
-    margin-bottom: 15px;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-  }
-  
-  .hero-description {
-    font-size: 1.2rem;
-    margin-bottom: 25px;
-    line-height: 1.4;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-  }
-  
-  .hero-buttons {
-    display: flex;
-    gap: 15px;
-  }
-  
-  .btn-play, .btn-info {
+
+  .hero-content { max-width: 500px; color: var(--netflix-white); }
+  .hero-title { font-size: 3rem; font-weight: bold; margin-bottom: 15px; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
+  .hero-description { font-size: 1.2rem; margin-bottom: 25px; line-height: 1.4; text-shadow: 1px 1px 2px rgba(0,0,0,0.8); }
+  .hero-buttons { display: flex; gap: 15px; flex-wrap: wrap; }
+
+  .btn-play, .btn-info, .btn-cast {
     padding: 12px 30px;
     border: none;
     border-radius: 6px;
@@ -132,24 +120,13 @@
     cursor: pointer;
     transition: all 0.3s ease;
   }
-  
-  .btn-play {
-    background: var(--netflix-white);
-    color: var(--netflix-black);
-  }
-  
-  .btn-play:hover {
-    background: rgba(255,255,255,0.8);
-  }
-  
-  .btn-info {
-    background: rgba(109, 109, 110, 0.7);
-    color: var(--netflix-white);
-  }
-  
-  .btn-info:hover {
-    background: rgba(109, 109, 110, 0.5);
-  }
+
+  .btn-play { background: var(--netflix-white); color: var(--netflix-black); }
+  .btn-play:hover { background: rgba(255,255,255,0.8); }
+  .btn-info { background: rgba(109, 109, 110, 0.7); color: var(--netflix-white); }
+  .btn-info:hover { background: rgba(109, 109, 110, 0.5); }
+  .btn-cast { background: #1a8cff; color: white; }
+  .btn-cast:hover { background: #0066cc; }
 
   .carousel, .grid {
     display: flex;
@@ -160,14 +137,9 @@
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
-  .carousel::-webkit-scrollbar {
-    display: none;
-  }
-  .grid {
-    flex-wrap: wrap;
-    justify-content: center;
-    overflow-x: hidden;
-  }
+  .carousel::-webkit-scrollbar { display: none; }
+  .grid { flex-wrap: wrap; justify-content: center; overflow-x: hidden; }
+
   .item {
     width: 200px;
     background: transparent;
@@ -179,27 +151,17 @@
     transition: transform 0.3s ease;
     cursor: pointer;
   }
-  .item:hover {
-    transform: scale(1.08);
-    z-index: 10;
-  }
+  .item:hover { transform: scale(1.08); z-index: 10; }
   .item img {
     width: 100%;
     height: 300px;
     object-fit: cover;
     border-radius: 8px;
+    background: var(--netflix-medium-gray);
   }
-  .item p {
-    margin: 8px 0;
-    font-size: 0.9rem;
-    color: var(--netflix-light-gray);
-    font-weight: 500;
-  }
-  .img-container {
-    position: relative;
-    overflow: hidden;
-    border-radius: 8px;
-  }
+  .item p { margin: 8px 0; font-size: 0.9rem; color: var(--netflix-light-gray); font-weight: 500; }
+
+  .img-container { position: relative; overflow: hidden; border-radius: 8px; }
   .fav-btn {
     position: absolute;
     top: 8px;
@@ -207,7 +169,6 @@
     font-size: 1.4em;
     cursor: pointer;
     text-shadow: 0 0 8px black;
-    user-select: none;
     background: rgba(0,0,0,0.6);
     border-radius: 50%;
     width: 35px;
@@ -217,20 +178,11 @@
     justify-content: center;
     transition: all 0.3s ease;
   }
-  .fav-btn:hover {
-    background: rgba(0,0,0,0.8);
-    transform: scale(1.1);
-  }
-  .category {
-    margin-bottom: 40px;
-  }
-  .category h2 {
-    margin: 0 0 15px 4%;
-    font-size: 1.4em;
-    color: var(--netflix-white);
-    font-weight: bold;
-  }
-  
+  .fav-btn:hover { background: rgba(0,0,0,0.8); transform: scale(1.1); }
+
+  .category { margin-bottom: 40px; }
+  .category h2 { margin: 0 0 15px 4%; font-size: 1.4em; color: var(--netflix-white); font-weight: bold; }
+
   .loading-spinner {
     display: inline-block;
     width: 40px;
@@ -240,13 +192,8 @@
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin: 20px auto;
-    text-align: center;
   }
-  
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
   video {
     width: 100%;
@@ -254,19 +201,32 @@
     display: none;
     margin-bottom: 10px;
   }
-  .btn-voltar {
-    margin: 10px;
-    padding: 8px 16px;
+
+  .player-container {
+    position: relative;
+    width: 100%;
+    background: #000;
+    margin-bottom: 20px;
+  }
+
+  #player-controls {
+    display: none;
+    justify-content: center;
+    gap: 10px;
+    margin: 10px 0;
+    flex-wrap: wrap;
+    padding: 0 4%;
+  }
+  #player-controls button {
     background: var(--netflix-red);
-    border: none;
     color: var(--netflix-white);
-    border-radius: 5px;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
     font-weight: bold;
     cursor: pointer;
   }
-  #conteudo {
-    padding: 0;
-  }
+
   .episodes button {
     display: block;
     width: 100%;
@@ -279,127 +239,315 @@
     text-align: left;
     cursor: pointer;
   }
-  #player-controls {
+  .episodes button:hover { background: #444; }
+
+  .config-modal, .cast-modal {
     display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.9);
+    z-index: 2000;
     justify-content: center;
-    gap: 10px;
-    margin: 10px 0;
-    flex-wrap: wrap;
+    align-items: center;
   }
-  #player-controls button {
+
+  .config-content, .cast-content {
+    background: var(--netflix-dark-gray);
+    padding: 30px;
+    border-radius: 10px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+
+  .config-content h2, .cast-content h2 {
+    color: var(--netflix-red);
+    margin-bottom: 20px;
+  }
+
+  .config-content input {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid var(--netflix-medium-gray);
+    background: var(--netflix-black);
+    color: white;
+    border-radius: 4px;
+  }
+
+  .config-content button, .cast-content button {
+    padding: 12px 24px;
     background: var(--netflix-red);
-    color: var(--netflix-white);
+    color: white;
     border: none;
-    border-radius: 6px;
-    padding: 6px 12px;
-    font-weight: bold;
+    border-radius: 4px;
     cursor: pointer;
+    margin-top: 10px;
+    margin-right: 10px;
+  }
+
+  .cast-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 20px 0;
+  }
+
+  .cast-option {
+    padding: 15px;
+    background: var(--netflix-medium-gray);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+
+  .cast-option:hover { background: #444; }
+
+  .load-more {
+    text-align: center;
+    padding: 20px;
+  }
+  .load-more button {
+    padding: 10px 30px;
+    background: var(--netflix-red);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: bold;
   }
 
   @media (max-width: 768px) {
-    .hero-content {
-      margin-left: 0;
-    }
-    .hero-title {
-      font-size: 2rem;
-    }
-    .hero-description {
-      font-size: 1rem;
-    }
-    .carousel, .grid {
-      padding: 0 20px 20px 20px;
-    }
-    .category h2 {
-      margin: 0 0 15px 20px;
-    }
-    .item {
-      width: 150px;
-    }
-    .item img {
-      height: 225px;
-    }
+    .hero-content { margin-left: 0; }
+    .hero-title { font-size: 2rem; }
+    .hero-description { font-size: 1rem; }
+    .carousel, .grid { padding: 0 20px 20px 20px; }
+    .category h2 { margin: 0 0 15px 20px; }
+    .item { width: 150px; }
+    .item img { height: 225px; }
   }
 </style>
 </head>
 <body>
 
 <header id="header">
-  <div class="logo"><span>L</span>iso<span>F</span>lix</div>
+  <div class="logo"><span>L</span>iso<span>F</span>lix <span style="font-size: 0.5em; color: #666;">PRO</span></div>
   <nav>
     <button id="tab-home" class="active">Início</button>
     <button id="tab-filmes">Filmes</button>
     <button id="tab-series">Séries</button>
     <button id="tab-favoritos">Favoritos</button>
+    <button class="config-btn" onclick="openConfig()">⚙️ Config</button>
   </nav>
 </header>
 
-<div id="player-controls">
-  <button onclick="playerPlay()">Play</button>
-  <button onclick="playerPause()">Pause</button>
-  <button onclick="playerStop()">Stop</button>
-  <button onclick="playerBack()">-10s</button>
-  <button onclick="playerForward()">+10s</button>
+<div class="player-container">
+  <video controls id="player"></video>
+  <div id="player-controls">
+    <button onclick="playerPlay()">▶️ Play</button>
+    <button onclick="playerPause()">⏸️ Pause</button>
+    <button onclick="playerStop()">⏹️ Stop</button>
+    <button onclick="playerBack()">⏪ -10s</button>
+    <button onclick="playerForward()">⏩ +10s</button>
+    <button onclick="openCastModal()">📺 Reproduzir na TV</button>
+  </div>
 </div>
-<video controls="" id="player"></video>
 
 <div id="conteudo">
   <div style="text-align: center; padding: 50px;"><div class="loading-spinner"></div></div>
 </div>
 
-<script>
-  const header = document.getElementById("header");
-  const homeBtn = document.getElementById("tab-home");
-  const filmesBtn = document.getElementById("tab-filmes");
-  const seriesBtn = document.getElementById("tab-series");
-  const favoritosBtn = document.getElementById("tab-favoritos");
-  const conteudoDiv = document.getElementById("conteudo");
+<div id="configModal" class="config-modal">
+  <div class="config-content">
+    <h2>⚙️ Configuração da API</h2>
+    <p style="color: #aaa; margin-bottom: 20px;">Digite as credenciais do seu servidor IPTV:</p>
+    <input type="text" id="config-url" placeholder="URL do servidor (ex: https://seuservidor.com)" />
+    <input type="text" id="config-user" placeholder="Usuário" />
+    <input type="password" id="config-pass" placeholder="Senha" />
+    <div style="margin-top: 20px;">
+      <button onclick="saveConfig()">💾 Salvar</button>
+      <button onclick="closeConfig()" style="background: #444;">Cancelar</button>
+    </div>
+  </div>
+</div>
 
+<div id="castModal" class="cast-modal">
+  <div class="cast-content">
+    <h2>📺 Reproduzir em Dispositivo</h2>
+    <p style="color: #aaa; margin-bottom: 20px;">Escolha como reproduzir:</p>
+    <div class="cast-options">
+      <div class="cast-option" onclick="castToLocalNetwork()">
+        <strong>🏠 Reproduzir na Rede Local</strong>
+        <p style="font-size: 0.9em; color: #aaa;">Abrir player em dispositivo na mesma rede (localhost)</p>
+      </div>
+      <div class="cast-option" onclick="copyStreamUrl()">
+        <strong>📋 Copiar Link do Stream</strong>
+        <p style="font-size: 0.9em; color: #aaa;">Copiar URL para usar em outro player</p>
+      </div>
+      <div class="cast-option" onclick="generateQR()">
+        <strong>📱 Gerar QR Code</strong>
+        <p style="font-size: 0.9em; color: #aaa;">Escanear com celular para reproduzir</p>
+      </div>
+    </div>
+    <button onclick="closeCastModal()" style="background: #444; width: 100%;">Fechar</button>
+  </div>
+</div>
+
+<script>
+  // Configuração via localStorage
+  const CONFIG_KEY = 'lisoflix_config';
+  let config = JSON.parse(localStorage.getItem(CONFIG_KEY)) || {};
+  
+  // Variáveis globais
   let filmes = {};
   let series = {};
   let streamBase = "";
-  let urlG = "http://flayto.click";
-  let userG = "felipe96452";
-  let passG = "8761dias";
   let favoritos = JSON.parse(localStorage.getItem("favoritos") || "[]");
+  let currentStreamUrl = "";
+  let currentItem = null;
+  let pageSize = 20;
+  let currentPage = 1;
+  let isLoading = false;
 
+  // Elementos DOM
+  const header = document.getElementById("header");
+  const conteudoDiv = document.getElementById("conteudo");
+  const player = document.getElementById("player");
+  const playerControls = document.getElementById("player-controls");
+
+  // Event Listeners
   window.addEventListener("scroll", () => {
-    if (window.scrollY > 30) {
-      header.style.backgroundColor = "rgba(0, 0, 0, 0.3)";
-    } else {
-      header.style.backgroundColor = "rgba(0, 0, 0, 1)";
+    header.style.backgroundColor = window.scrollY > 30 ? "rgba(0, 0, 0, 0.9)" : "rgba(0, 0, 0, 1)";
+    // Lazy loading no scroll
+    if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) {
+      loadMoreItems();
     }
   });
 
-  function playerPlay() { document.getElementById("player").play(); }
-  function playerPause() { document.getElementById("player").pause(); }
-  function playerStop() {
-    const p = document.getElementById("player");
-    p.pause(); p.currentTime = 0;
-  }
-  function playerBack() { const p = document.getElementById("player"); p.currentTime -= 10; }
-  function playerForward() { const p = document.getElementById("player"); p.currentTime += 10; }
+  document.getElementById("tab-home").addEventListener("click", renderTelaPrincipal);
+  document.getElementById("tab-filmes").addEventListener("click", abrirFilmes);
+  document.getElementById("tab-series").addEventListener("click", abrirSeries);
+  document.getElementById("tab-favoritos").addEventListener("click", abrirFavoritos);
+
+  // Funções do Player
+  function playerPlay() { player.play(); }
+  function playerPause() { player.pause(); }
+  function playerStop() { player.pause(); player.currentTime = 0; }
+  function playerBack() { player.currentTime -= 10; }
+  function playerForward() { player.currentTime += 10; }
 
   function exibirPlayer(link, item = null) {
-    const player = document.getElementById("player");
-    const controls = document.getElementById("player-controls");
+    currentStreamUrl = link;
+    currentItem = item;
     player.src = link;
     player.style.display = "block";
-    controls.style.display = "flex";
+    playerControls.style.display = "flex";
     player.play();
     window.scrollTo({ top: 0, behavior: "smooth" });
     if (item) registrarUltimo(item);
   }
 
   function ocultarPlayer() {
-    const player = document.getElementById("player");
-    const controls = document.getElementById("player-controls");
     player.pause();
     player.removeAttribute("src");
     player.load();
     player.style.display = "none";
-    controls.style.display = "none";
+    playerControls.style.display = "none";
+    currentStreamUrl = "";
+    currentItem = null;
   }
 
+  // Configuração
+  function openConfig() {
+    document.getElementById("configModal").style.display = "flex";
+    document.getElementById("config-url").value = config.url || "";
+    document.getElementById("config-user").value = config.user || "";
+    document.getElementById("config-pass").value = config.pass || "";
+  }
+
+  function closeConfig() {
+    document.getElementById("configModal").style.display = "none";
+  }
+
+  function saveConfig() {
+    config = {
+      url: document.getElementById("config-url").value.replace(/\/$/, ""),
+      user: document.getElementById("config-user").value,
+      pass: document.getElementById("config-pass").value
+    };
+    localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+    closeConfig();
+    renderTelaPrincipal();
+  }
+
+  function checkConfig() {
+    if (!config.url || !config.user || !config.pass) {
+      openConfig();
+      return false;
+    }
+    return true;
+  }
+
+  // Cast / Reproduzir na rede
+  function openCastModal() {
+    if (!currentStreamUrl) {
+      alert("Nenhum vídeo em reprodução. Selecione um filme ou série primeiro.");
+      return;
+    }
+    document.getElementById("castModal").style.display = "flex";
+  }
+
+  function closeCastModal() {
+    document.getElementById("castModal").style.display = "none";
+  }
+
+  function castToLocalNetwork() {
+    // Abre o stream em uma nova aba/janela que pode ser acessada por dispositivos na rede
+    const castWindow = window.open("", "_blank", "width=800,height=600");
+    castWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head><title>Cast - LisoFlix</title></head>
+      <body style="margin:0;background:#000;display:flex;justify-content:center;align-items:center;height:100vh;">
+        <video controls autoplay style="width:100%;height:100%;max-width:100vw;max-height:100vh;">
+          <source src="${currentStreamUrl}" type="video/mp4">
+        </video>
+      </body>
+      </html>
+    `);
+    closeCastModal();
+  }
+
+  function copyStreamUrl() {
+    navigator.clipboard.writeText(currentStreamUrl).then(() => {
+      alert("Link copiado para a área de transferência!");
+    });
+    closeCastModal();
+  }
+
+  function generateQR() {
+    // Usa API gratuita para gerar QR code
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(currentStreamUrl)}`;
+    const qrWindow = window.open("", "_blank", "width=400,height=400");
+    qrWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head><title>QR Code - LisoFlix</title></head>
+      <body style="text-align:center;background:#141414;color:white;font-family:Arial;">
+        <h2>Escaneie para reproduzir</h2>
+        <img src="${qrUrl}" style="max-width:300px;" />
+        <p style="font-size:12px;word-break:break-all;">${currentStreamUrl}</p>
+      </body>
+      </html>
+    `);
+    closeCastModal();
+  }
+
+  // Organização e Lazy Loading
   function organizarPorCategoria(lista) {
     const categorias = {};
     lista.forEach(item => {
@@ -420,34 +568,43 @@
     localStorage.setItem("ultimos", JSON.stringify(ultimos));
   }
 
-  function alternarFavorito(item) {
+  function alternarFavorito(item, event) {
+    if (event) event.stopPropagation();
     const idx = favoritos.findIndex(i => i.name === item.name);
     if (idx >= 0) favoritos.splice(idx, 1);
     else favoritos.unshift(item);
     localStorage.setItem("favoritos", JSON.stringify(favoritos));
+    return idx < 0; // retorna true se adicionou
   }
 
   function resetarAbas() {
-    homeBtn.classList.remove("active");
-    filmesBtn.classList.remove("active");
-    seriesBtn.classList.remove("active");
-    favoritosBtn.classList.remove("active");
+    document.querySelectorAll("nav button").forEach(btn => {
+      if (!btn.classList.contains("config-btn")) btn.classList.remove("active");
+    });
   }
 
-  function renderItens(lista, isFilme = true) {
-    const grid = document.createElement("div");
-    grid.className = "grid";
+  // Renderização com Lazy Loading
+  let allItems = [];
+  let renderedCount = 0;
+
+  function renderItensLazy(container, items, isFilme = true, append = false) {
+    if (!append) {
+      container.innerHTML = "";
+      allItems = items;
+      renderedCount = 0;
+    }
+
+    const toRender = allItems.slice(renderedCount, renderedCount + pageSize);
     
-    lista.forEach(item => {
+    toRender.forEach(item => {
       const el = document.createElement("div");
       el.className = "item";
-
       const capa = isFilme ? item.stream_icon : item.cover;
       const isFav = favoritos.some(f => f.name === item.name);
 
       el.innerHTML = `
         <div class="img-container">
-          <img loading="lazy" src="${capa || ""}" onerror="this.style.display=\'none\'">
+          <img loading="lazy" src="${capa || ''}" onerror="this.style.display='none'" alt="${item.name}">
           <span class="fav-btn" title="Favoritar">${isFav ? "★" : "☆"}</span>
         </div>
         <p>${item.name}</p>
@@ -459,48 +616,102 @@
           : abrirSerieDetalhe(item.series_id, item.name);
 
       el.querySelector(".fav-btn").onclick = (e) => {
-        e.stopPropagation();
-        alternarFavorito(item);
-        e.target.textContent = favoritos.some(f => f.name === item.name) ? "★" : "☆";
+        const added = alternarFavorito(item, e);
+        e.target.textContent = added ? "★" : "☆";
       };
 
-      grid.appendChild(el);
+      container.appendChild(el);
     });
-    return grid;
+
+    renderedCount += toRender.length;
+
+    // Adiciona botão "Carregar mais" se houver mais itens
+    if (renderedCount < allItems.length) {
+      let loadMoreBtn = container.querySelector(".load-more-container");
+      if (!loadMoreBtn) {
+        loadMoreBtn = document.createElement("div");
+        loadMoreBtn.className = "load-more-container";
+        loadMoreBtn.style.cssText = "width:100%;text-align:center;padding:20px;";
+        container.appendChild(loadMoreBtn);
+      }
+      loadMoreBtn.innerHTML = `
+        <button onclick="loadMoreItems()" style="padding:10px 30px;background:#e50914;color:white;border:none;border-radius:20px;cursor:pointer;">
+          Carregar mais (${allItems.length - renderedCount} restantes)
+        </button>
+      `;
+    }
   }
 
+  function loadMoreItems() {
+    const container = document.querySelector(".grid") || document.querySelector(".carousel");
+    if (container) {
+      const isFilme = container.dataset.type === "filmes";
+      renderItensLazy(container, allItems, isFilme, true);
+    }
+  }
+
+  // Telas
   function abrirFilmes() {
     ocultarPlayer();
     resetarAbas();
-    filmesBtn.classList.add("active");
-    conteudoDiv.innerHTML = `<div style="padding: 20px;"><h2 class="category-title">Filmes <button class=\'btn-voltar\' onclick=\'renderTelaPrincipal()\'>Voltar</button></h2></div>`;
-    conteudoDiv.appendChild(renderItens(Object.values(filmes).flat(), true));
+    document.getElementById("tab-filmes").classList.add("active");
+    conteudoDiv.innerHTML = `
+      <div style="padding: 20px;">
+        <h2 class="category-title">Filmes 
+          <button style="padding:8px 16px;background:#333;color:white;border:none;border-radius:4px;cursor:pointer;" onclick="renderTelaPrincipal()">Voltar</button>
+        </h2>
+      </div>
+      <div class="grid" data-type="filmes"></div>
+    `;
+    const todosFilmes = Object.values(filmes).flat();
+    renderItensLazy(conteudoDiv.querySelector(".grid"), todosFilmes, true);
   }
 
   function abrirSeries() {
     ocultarPlayer();
     resetarAbas();
-    seriesBtn.classList.add("active");
-    conteudoDiv.innerHTML = `<div style="padding: 20px;"><h2 class="category-title">Séries <button class=\'btn-voltar\' onclick=\'renderTelaPrincipal()\'>Voltar</button></h2></div>`;
-    conteudoDiv.appendChild(renderItens(Object.values(series).flat(), false));
+    document.getElementById("tab-series").classList.add("active");
+    conteudoDiv.innerHTML = `
+      <div style="padding: 20px;">
+        <h2 class="category-title">Séries 
+          <button style="padding:8px 16px;background:#333;color:white;border:none;border-radius:4px;cursor:pointer;" onclick="renderTelaPrincipal()">Voltar</button>
+        </h2>
+      </div>
+      <div class="grid" data-type="series"></div>
+    `;
+    const todasSeries = Object.values(series).flat();
+    renderItensLazy(conteudoDiv.querySelector(".grid"), todasSeries, false);
   }
 
   function abrirFavoritos() {
     ocultarPlayer();
     resetarAbas();
-    favoritosBtn.classList.add("active");
-    conteudoDiv.innerHTML = `<div style="padding: 20px;"><h2 class="category-title">Favoritos <button class=\'btn-voltar\' onclick=\'renderTelaPrincipal()\'>Voltar</button></h2></div>`;
-    let ultimos = JSON.parse(localStorage.getItem("ultimos") || "[]");
-    conteudoDiv.appendChild(renderItens(favoritos));
+    document.getElementById("tab-favoritos").classList.add("active");
+    conteudoDiv.innerHTML = `
+      <div style="padding: 20px;">
+        <h2 class="category-title">Favoritos 
+          <button style="padding:8px 16px;background:#333;color:white;border:none;border-radius:4px;cursor:pointer;" onclick="renderTelaPrincipal()">Voltar</button>
+        </h2>
+      </div>
+      <div class="grid" data-type="filmes"></div>
+    `;
+    renderItensLazy(conteudoDiv.querySelector(".grid"), favoritos, true);
   }
 
   async function abrirSerieDetalhe(seriesId, seriesName) {
     ocultarPlayer();
-    conteudoDiv.innerHTML = `<div style="padding: 20px;"><h2 class="category-title">${seriesName} <button class=\'btn-voltar\' onclick=\'abrirSeries()\'>Voltar para Séries</button></h2><div id=\'episodes-list\'>Carregando episódios...</div></div>`;
+    conteudoDiv.innerHTML = `
+      <div style="padding: 20px;">
+        <h2 class="category-title">${seriesName} 
+          <button style="padding:8px 16px;background:#333;color:white;border:none;border-radius:4px;cursor:pointer;" onclick="abrirSeries()">Voltar</button>
+        </h2>
+        <div id="episodes-list">Carregando episódios...</div>
+      </div>
+    `;
 
     try {
-      const token = `username=${userG}&password=${passG}`;
-      const response = await fetch(`${urlG}/player_api.php?${token}&action=get_series_info&series_id=${seriesId}`);
+      const token = `username=${config.user}&password=${config.pass}`;
+      const response = await fetch(`${config.url}/player_api.php?${token}&action=get_series_info&series_id=${seriesId}`);
       const data = await response.json();
 
       const episodesList = document.getElementById("episodes-list");
@@ -510,7 +721,7 @@
         for (const seasonNum in data.episodes) {
           const season = data.episodes[seasonNum];
           const seasonDiv = document.createElement("div");
-          seasonDiv.innerHTML = `<h3 class="season-title">Temporada ${seasonNum}</h3>`;
+          seasonDiv.innerHTML = `<h3 style="margin: 20px 0 10px; color: #e50914;">Temporada ${seasonNum}</h3>`;
           
           season.forEach(episode => {
             const episodeBtn = document.createElement("button");
@@ -522,166 +733,101 @@
           episodesList.appendChild(seasonDiv);
         }
       } else {
-        episodesList.innerHTML = "<p style=\'text-align: center; color: var(--netflix-light-gray); padding: 40px;\'>Nenhum episódio encontrado para esta série.</p>";
+        episodesList.innerHTML = "<p style='text-align: center; color: #808080; padding: 40px;'>Nenhum episódio encontrado.</p>";
       }
-
     } catch (e) {
-      console.error("Erro ao carregar detalhes da série:", e);
-      conteudoDiv.innerHTML = "<p style=\'color:var(--netflix-red); padding: 20px;\'>Erro ao carregar detalhes da série.</p>";
+      console.error("Erro:", e);
+      conteudoDiv.innerHTML = "<p style='color:#e50914; padding: 20px;'>Erro ao carregar detalhes.</p>";
     }
   }
 
   async function renderTelaPrincipal() {
+    if (!checkConfig()) return;
+
     ocultarPlayer();
     resetarAbas();
-    homeBtn.classList.add("active");
-    conteudoDiv.innerHTML = 
-      `<div style="text-align: center; padding: 50px;"><div class="loading-spinner"></div></div>`;
+    document.getElementById("tab-home").classList.add("active");
+    conteudoDiv.innerHTML = `<div style="text-align: center; padding: 50px;"><div class="loading-spinner"></div></div>`;
 
     try {
-      const token = `username=${userG}&password=${passG}`;
-      const filmesPromise = fetch(`${urlG}/player_api.php?${token}&action=get_vod_streams`).then(r => r.json());
-      const seriesPromise = fetch(`${urlG}/player_api.php?${token}&action=get_series`).then(r => r.json());
+      const token = `username=${config.user}&password=${config.pass}`;
+      const filmesPromise = fetch(`${config.url}/player_api.php?${token}&action=get_vod_streams`).then(r => r.json());
+      const seriesPromise = fetch(`${config.url}/player_api.php?${token}&action=get_series`).then(r => r.json());
 
       const [vods, sers] = await Promise.all([filmesPromise, seriesPromise]);
 
-      streamBase = `${urlG}/movie/${userG}/${passG}/`;
+      streamBase = `${config.url}/movie/${config.user}/${config.pass}/`;
       filmes = organizarPorCategoria(vods);
       series = organizarPorCategoria(sers);
 
       conteudoDiv.innerHTML = "";
 
+      // Hero Banner
       const heroBanner = document.createElement("div");
       heroBanner.className = "hero-banner";
       heroBanner.innerHTML = `
         <div class="hero-content">
-          <h1 class="hero-title">LisoFlix</h1>
-          <p class="hero-description">Assista aos melhores filmes e séries em alta qualidade. Entretenimento ilimitado na palma da sua mão.</p>
+          <h1 class="hero-title">LisoFlix Pro</h1>
+          <p class="hero-description">Assista aos melhores filmes e séries. Use o botão "📺 Reproduzir na TV" para assistir em outros dispositivos.</p>
           <div class="hero-buttons">
             <button class="btn-play" onclick="abrirFilmes()">Assistir Agora</button>
-            <button class="btn-info" onclick="abrirSeries()">Mais Informações</button>
+            <button class="btn-info" onclick="abrirSeries()">Séries</button>
+            <button class="btn-cast" onclick="openCastModal()">📺 Reproduzir na TV</button>
           </div>
         </div>
       `;
       conteudoDiv.appendChild(heroBanner);
 
+      // Filmes em Destaque (lazy load)
       if (Object.keys(filmes).length) {
         const secFilmes = document.createElement("div");
         secFilmes.className = "category";
-        secFilmes.innerHTML = `<h2 class="category-title">Filmes em Destaque</h2>`;
+        secFilmes.innerHTML = `<h2>Filmes em Destaque</h2>`;
         const filmesRow = document.createElement("div");
         filmesRow.className = "carousel";
+        filmesRow.dataset.type = "filmes";
         
-        let filmesAdicionados = 0;
-        Object.keys(filmes).forEach(cat => {
-          if (filmesAdicionados >= 15) return;
-          filmes[cat].slice(0, Math.min(10, 15 - filmesAdicionados)).forEach(f => {
-            const item = document.createElement("div");
-            item.className = "item";
-            const isFav = favoritos.some(fav => fav.name === f.name);
-            item.innerHTML = `
-              <div class="img-container">
-                <img loading="lazy" src="${f.stream_icon || ""}" onerror="this.style.display=\'none\'">
-                <span class="fav-btn" title="Favoritar">${isFav ? "★" : "☆"}</span>
-              </div>
-              <p>${f.name}</p>
-            `;
-            
-            item.querySelector(".fav-btn").onclick = (e) => {
-              e.stopPropagation();
-              alternarFavorito(f);
-              e.target.textContent = favoritos.some(fav => fav.name === f.name) ? "★" : "☆";
-            };
-            item.querySelector(".img-container").onclick = () => exibirPlayer(`${streamBase}${f.stream_id}.mp4`, f);
-            filmesRow.appendChild(item);
-            filmesAdicionados++;
-          });
-        });
+        const todosFilmes = Object.values(filmes).flat();
+        renderItensLazy(filmesRow, todosFilmes.slice(0, 50), true); // Primeiros 50
         secFilmes.appendChild(filmesRow);
         conteudoDiv.appendChild(secFilmes);
-
-        const catDesenhos = Object.keys(filmes).find(c => /desenho|animaç|infantil/i.test(c));
-        if (catDesenhos) {
-          const secDesenhos = document.createElement("div");
-          secDesenhos.className = "category";
-          secDesenhos.innerHTML = `<h2 class="category-title">Desenhos</h2>`;
-          const desenhosRow = document.createElement("div");
-          desenhosRow.className = "carousel";
-          filmes[catDesenhos].slice(0, 15).forEach(f => {
-            const item = document.createElement("div");
-            item.className = "item";
-            const isFav = favoritos.some(fav => fav.name === f.name);
-            item.innerHTML = `
-              <div class="img-container">
-                <img loading="lazy" src="${f.stream_icon || ""}" onerror="this.style.display=\'none\'">
-                <span class="fav-btn" title="Favoritar">${isFav ? "★" : "☆"}</span>
-              </div>
-              <p>${f.name}</p>
-            `;
-            
-            item.querySelector(".fav-btn").onclick = (e) => {
-              e.stopPropagation();
-              alternarFavorito(f);
-              e.target.textContent = favoritos.some(fav => fav.name === f.name) ? "★" : "☆";
-            };
-            item.querySelector(".img-container").onclick = () => exibirPlayer(`${streamBase}${f.stream_id}.mp4`, f);
-            desenhosRow.appendChild(item);
-          });
-          secDesenhos.appendChild(desenhosRow);
-          conteudoDiv.appendChild(secDesenhos);
-        }
       }
 
+      // Séries em Destaque
       if (Object.keys(series).length) {
         const secSeries = document.createElement("div");
         secSeries.className = "category";
-        secSeries.innerHTML = `<h2 class="category-title">Séries em Destaque</h2>`;
+        secSeries.innerHTML = `<h2>Séries em Destaque</h2>`;
         const seriesRow = document.createElement("div");
         seriesRow.className = "carousel";
+        seriesRow.dataset.type = "series";
         
-        let seriesAdicionadas = 0;
-        Object.keys(series).forEach(cat => {
-          if (seriesAdicionadas >= 15) return;
-          series[cat].slice(0, Math.min(10, 15 - seriesAdicionadas)).forEach(s => {
-            const item = document.createElement("div");
-            item.className = "item";
-            const isFav = favoritos.some(fav => fav.name === s.name);
-            item.innerHTML = `
-              <div class="img-container">
-                <img loading="lazy" src="${s.cover || ""}" onerror="this.style.display=\'none\'">
-                <span class="fav-btn" title="Favoritar">${isFav ? "★" : "☆"}</span>
-              </div>
-              <p>${s.name}</p>
-            `;
-            
-            item.querySelector(".fav-btn").onclick = (e) => {
-              e.stopPropagation();
-              alternarFavorito(s);
-              e.target.textContent = favoritos.some(fav => fav.name === s.name) ? "★" : "☆";
-            };
-            item.querySelector(".img-container").onclick = () => abrirSerieDetalhe(s.series_id, s.name);
-            seriesRow.appendChild(item);
-            seriesAdicionadas++;
-          });
-        });
+        const todasSeries = Object.values(series).flat();
+        renderItensLazy(seriesRow, todasSeries.slice(0, 50), false);
         secSeries.appendChild(seriesRow);
         conteudoDiv.appendChild(secSeries);
       }
 
     } catch (e) {
-      console.error("Erro ao carregar dados da API:", e);
-      conteudoDiv.innerHTML = "<p style=\'color:var(--netflix-red); text-align:center; padding: 50px;\'>Erro ao carregar filmes e séries. Verifique a conexão ou as credenciais da API.</p>";
+      console.error("Erro:", e);
+      conteudoDiv.innerHTML = `
+        <div style="text-align:center; padding: 50px; color: #e50914;">
+          <p>Erro ao carregar dados. Verifique:</p>
+          <ul style="text-align:left; display:inline-block; margin-top:20px;">
+            <li>Sua conexão com a internet</li>
+            <li>As credenciais em Configurações (⚙️)</li>
+            <li>Se o servidor está online</li>
+          </ul>
+          <br><br>
+          <button onclick="openConfig()" style="padding:10px 20px;background:#e50914;color:white;border:none;border-radius:4px;cursor:pointer;">Abrir Configurações</button>
+        </div>
+      `;
     }
   }
 
-  homeBtn.addEventListener("click", renderTelaPrincipal);
-  filmesBtn.addEventListener("click", abrirFilmes);
-  seriesBtn.addEventListener("click", abrirSeries);
-  favoritosBtn.addEventListener("click", abrirFavoritos);
-
+  // Iniciar
   renderTelaPrincipal();
 </script>
 
 </body>
 </html>
-

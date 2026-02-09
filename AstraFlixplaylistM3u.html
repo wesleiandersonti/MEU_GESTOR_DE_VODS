@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AstraFlix</title>
+<style>
+    @import url('https://fonts.cdnfonts.com/css/bebas-neue');
+
+    body {
+        background-color: #000;
+        color: #fff;
+        font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    /* Cabeçalho */
+    .header {
+        width: 100%;
+        padding: 15px 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: #000;
+    }
+
+    /* Logo estilo Netflix */
+    .logo-svg {
+        width: 220px;
+        height: 60px;
+    }
+    .logo-svg text {
+        font-family: 'Bebas Neue', sans-serif;
+        font-size: 60px;
+        font-weight: bold;
+        fill: #E50914;
+        text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.8);
+    }
+
+    /* Conteúdo */
+    .content {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 90%;
+        max-width: 500px;
+        text-align: center;
+        padding-top: 5vh;
+    }
+
+    /* Entrada e botão */
+    .url-input, .load-button {
+        width: 100%;
+        padding: 14px 16px;
+        margin-bottom: 15px;
+        border-radius: 4px;
+        font-size: 1rem;
+        box-sizing: border-box;
+    }
+    .url-input {
+        background-color: #111;
+        border: 1px solid #333;
+        color: #fff;
+    }
+    .url-input::placeholder {
+        color: #888;
+    }
+    .load-button {
+        background-color: #E50914;
+        border: none;
+        color: #fff;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        text-transform: uppercase;
+    }
+    .load-button:hover {
+        background-color: #f40612;
+    }
+
+    /* Categorias Netflix style */
+    #categorias {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 12px;
+        width: 100%;
+        margin-top: 20px;
+    }
+    .categoria {
+        background-color: #141414;
+        color: #fff;
+        font-weight: bold;
+        padding: 16px;
+        border-radius: 6px;
+        text-align: center;
+        cursor: pointer;
+        transition: transform 0.2s ease, background-color 0.3s ease;
+    }
+    .categoria:hover {
+        background-color: #E50914;
+        transform: scale(1.05);
+    }
+
+    /* Código selecionado */
+    #codigo {
+        margin: 10px 0;
+        font-weight: bold;
+        display: none;
+    }
+
+    /* Editor */
+    .editor {
+        background-color: #000;
+        color: #fff;
+        border: 1px solid #333;
+        height: 300px;
+        resize: vertical;
+        font-family: monospace;
+        width: 100%;
+        padding: 16px 20px;
+        margin-bottom: 15px;
+        border-radius: 4px;
+        display: none;
+    }
+
+    /* Spinner */
+    #spinner-container {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        margin-top: 30px;
+    }
+    #spinner {
+        width: 50px;
+        height: 50px;
+        border: 5px solid #E50914;
+        border-top: 5px solid #333;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    /* Mobile */
+    @media (max-width: 768px) {
+        .logo-svg {
+            width: 180px;
+            height: 50px;
+        }
+        .url-input, .load-button {
+            font-size: 0.95rem;
+        }
+        #categorias {
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        }
+    }
+</style>
+</head>
+<body>
+
+<header class="header">
+    <svg class="logo-svg" viewBox="0 0 220 60">
+        <path id="curve" d="M 10,45 C 70,38 150,38 210,45" stroke="transparent" fill="transparent"/>
+        <text><textPath xlink:href="#curve">AstraFlix</textPath></text>
+    </svg>
+</header>
+
+<main class="content">
+    <input type="text" class="url-input" id="url" placeholder="Cole a URL da lista M3U">
+    <button class="load-button" onclick="carregarLista()">Carregar lista</button>
+
+    <div id="spinner-container">
+        <div id="spinner"></div>
+    </div>
+
+    <div id="categorias"></div>
+    <div id="codigo"></div>
+    <textarea class="editor" id="editor" placeholder="Código M3U da categoria selecionada..."></textarea>
+</main>
+
+<script>
+    let mapaCategorias = {};
+
+    async function carregarLista() {
+        const url = document.getElementById('url').value.trim();
+        if (!url) {
+            alert("Por favor, insira uma URL válida.");
+            return;
+        }
+
+        document.querySelector('.url-input').style.display = 'none';
+        document.querySelector('.load-button').style.display = 'none';
+        document.getElementById('spinner-container').style.display = 'flex';
+
+        try {
+            const res = await fetch(url);
+            if (!res.ok) {
+                document.getElementById('codigo').innerText = `Erro ao carregar lista: ${res.status}`;
+                document.getElementById('codigo').style.display = 'block';
+                return;
+            }
+
+            const texto = await res.text();
+            const linhas = texto.split('\n');
+            mapaCategorias = {};
+
+            for (let i = 0; i < linhas.length; i++) {
+                if (linhas[i].startsWith('#EXTINF')) {
+                    const match = linhas[i].match(/group-title="([^"]+)"/);
+                    const nome = match ? match[1].trim() : 'Sem Categoria';
+                    if (!mapaCategorias[nome]) mapaCategorias[nome] = [];
+                    mapaCategorias[nome].push(linhas[i]);
+                    mapaCategorias[nome].push(linhas[i + 1]);
+                }
+            }
+
+            const divCategorias = document.getElementById('categorias');
+            divCategorias.innerHTML = '';
+
+            Object.keys(mapaCategorias).forEach(cat => {
+                const div = document.createElement('div');
+                div.className = 'categoria';
+                div.innerText = cat;
+                div.onclick = () => {
+                    document.getElementById('codigo').innerText = `Categoria selecionada: ${cat}`;
+                    document.getElementById('codigo').style.display = 'block';
+                    document.getElementById('editor').style.display = 'block';
+                    const canais = mapaCategorias[cat];
+                    const m3u = ['#EXTM3U', ...canais].join('\n');
+                    document.getElementById('editor').value = m3u;
+                };
+                divCategorias.appendChild(div);
+            });
+
+            if (Object.keys(mapaCategorias).length === 0) {
+                document.getElementById('codigo').innerText = 'Nenhuma categoria encontrada na lista.';
+                document.getElementById('codigo').style.display = 'block';
+            }
+
+        } catch (err) {
+            document.getElementById('codigo').innerText = 'Erro ao carregar ou processar a lista.';
+            document.getElementById('codigo').style.display = 'block';
+            console.error(err);
+        }
+
+        document.getElementById('spinner-container').style.display = 'none';
+    }
+</script>
+
+</body>
+</html>
