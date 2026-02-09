@@ -1,16 +1,15 @@
 {
-  "version": "1.0.38",
-  "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.38/MeuGestorVODs-Setup-v1.0.38.exe",
+  "version": "1.0.39",
+  "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.39/MeuGestorVODs-Setup-v1.0.39.exe",
   "sha256": "",
   "notes": [
+    "Correção: Menu hambúrguer agora abre LisoFlix e DARK M3U CHECKER em abas internas",
+    "Correção: Resolvido conflito de namespaces (MessageBox, Button, Color)",
+    "Correção: Build falhando devido a erros de compilação",
+    "Correção: Módulos não abrem mais no navegador externo",
+    "Melhoria: Sistema de abas funcionando corretamente",
     "Novo: Botão Cast para reproduzir em dispositivos na mesma rede",
     "Novo: Sistema de links M3U8 personalizados no LisoFlix",
-    "Novo: Banco de dados IndexedDB para links M3U8 no LisoFlix",
-    "Novo: Configuração exclusiva de links pelo usuário",
-    "Novo: Histórico de reprodução salvo automaticamente",
-    "Novo: Interface modal de configuração no LisoFlix",
-    "Novo: Estatísticas de reprodução de links personalizados",
-    "Melhoria: Toda reprodução é salva no banco de dados",
-    "Correções: Menu hambúrguer funcionando corretamente"
+    "Novo: Banco de dados IndexedDB para links no LisoFlix"
   ]
 }

@@ -1568,18 +1568,18 @@ namespace MeuGestorVODs
                 return;
             }
 
-            // Abre LisoFlix em janela interna com WebView2
-            OpenLisoFlixInWebView(filePath);
+            // Abre LisoFlix em uma aba interna
+            OpenModuleInTab("LisoFlix", filePath);
         }
 
         private void CastToDevice_Click(object sender, RoutedEventArgs e)
         {
             // Verifica se há itens selecionados
-            var selectedEntries = EntriesList?.SelectedItems.Cast<PlaylistEntry>().ToList();
+            var selectedEntries = EntriesList?.SelectedItems.Cast<M3UEntry>().ToList();
             
             if (selectedEntries == null || selectedEntries.Count == 0)
             {
-                MessageBox.Show(
+                System.Windows.MessageBox.Show(
                     "Selecione pelo menos um item para fazer cast.\n\n" +
                     "Dica: Use o checkbox ao lado do nome do canal/VOD.",
                     "Cast para Dispositivos",
@@ -1592,7 +1592,7 @@ namespace MeuGestorVODs
             OpenCastDeviceWindow(selectedEntries);
         }
 
-        private void OpenCastDeviceWindow(List<PlaylistEntry> entries)
+        private void OpenCastDeviceWindow(List<M3UEntry> entries)
         {
             var castWindow = new System.Windows.Window
             {
@@ -1683,7 +1683,7 @@ namespace MeuGestorVODs
             };
             scanButton.Click += (s, ev) =>
             {
-                MessageBox.Show(
+                System.Windows.MessageBox.Show(
                     "Escaneando dispositivos na rede...\n\n" +
                     "Funcionalidade em desenvolvimento.\n" +
                     "Na versão completa, buscaria dispositivos DLNA/UPnP.",
@@ -1705,7 +1705,7 @@ namespace MeuGestorVODs
             {
                 if (devicesListBox.SelectedItem == null)
                 {
-                    MessageBox.Show(
+                    System.Windows.MessageBox.Show(
                         "Selecione um dispositivo para fazer cast.",
                         "Cast",
                         MessageBoxButton.OK,
@@ -1716,7 +1716,7 @@ namespace MeuGestorVODs
                 var selectedDevice = devicesListBox.SelectedItem.ToString();
                 var firstEntry = entries.First();
                 
-                MessageBox.Show(
+                System.Windows.MessageBox.Show(
                     $"Iniciando cast para:\n{selectedDevice}\n\n" +
                     $"Conteúdo: {firstEntry.Name}\n" +
                     $"URL: {firstEntry.Url}\n\n" +
@@ -1909,14 +1909,151 @@ namespace MeuGestorVODs
                 return false;
             }
 
-            Process.Start(new ProcessStartInfo
-            {
-                FileName = filePath,
-                UseShellExecute = true
-            });
+            // Abre em uma aba interna ao invés do navegador externo
+            OpenModuleInTab(moduleName, filePath);
 
-            StatusMessage = $"Modulo {moduleName} aberto: {Path.GetFileName(filePath)}";
+            StatusMessage = $"Modulo {moduleName} aberto na aba: {Path.GetFileName(filePath)}";
             return true;
+        }
+
+        private void OpenModuleInTab(string moduleName, string htmlPath)
+        {
+            // Verifica se já existe uma aba com este módulo
+            foreach (TabItem existingTab in ChromeTabControl.Items)
+            {
+                if (existingTab.Header.ToString() == moduleName)
+                {
+                    // Seleciona a aba existente
+                    ChromeTabControl.SelectedItem = existingTab;
+                    return;
+                }
+            }
+
+            // Torna o TabControl visível
+            ChromeTabControl.Visibility = Visibility.Visible;
+
+            // Cria nova aba
+            var newTab = new TabItem 
+            { 
+                Header = moduleName,
+                Tag = htmlPath
+            };
+
+            // Cria o container com WebView2
+            var grid = new Grid();
+            grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+
+            // Barra de ferramentas
+            var toolbar = new System.Windows.Controls.StackPanel 
+            { 
+                Orientation = System.Windows.Controls.Orientation.Horizontal,
+                Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(30, 30, 30)),
+                Height = 35
+            };
+
+            // WebView2 (declarar antes dos event handlers)
+            var webView = new WebView2();
+
+            var btnVoltar = new System.Windows.Controls.Button 
+            { 
+                Content = "← Voltar", 
+                Foreground = System.Windows.Media.Brushes.White, 
+                Background = System.Windows.Media.Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+                Padding = new Thickness(10, 5, 10, 5),
+                Margin = new Thickness(5, 0, 0, 0)
+            };
+            btnVoltar.Click += (s, e) => 
+            {
+                if (webView.CoreWebView2 != null)
+                    webView.CoreWebView2.GoBack();
+            };
+
+            var btnRecarregar = new System.Windows.Controls.Button 
+            { 
+                Content = "↻ Recarregar", 
+                Foreground = System.Windows.Media.Brushes.White, 
+                Background = System.Windows.Media.Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+                Padding = new Thickness(10, 5, 10, 5)
+            };
+            btnRecarregar.Click += (s, e) => webView.Reload();
+
+            var btnPermitirHttp = new System.Windows.Controls.Button 
+            { 
+                Content = "🔓 Permitir HTTP", 
+                Foreground = System.Windows.Media.Brushes.White, 
+                Background = System.Windows.Media.Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+                Padding = new Thickness(10, 5, 10, 5)
+            };
+            btnPermitirHttp.Click += (s, e) =>
+            {
+                if (webView.CoreWebView2 != null)
+                {
+                    webView.CoreWebView2.Navigate(webView.Source.ToString());
+                    System.Windows.MessageBox.Show("Página recarregada com permissões HTTP ativadas.");
+                }
+            };
+
+            toolbar.Children.Add(btnVoltar);
+            toolbar.Children.Add(btnRecarregar);
+            toolbar.Children.Add(btnPermitirHttp);
+            Grid.SetRow(toolbar, 0);
+
+            // WebView2 Configuration
+            webView.CreationProperties = new CoreWebView2CreationProperties
+            {
+                UserDataFolder = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "MeuGestorVODs",
+                    "WebView2Data",
+                    moduleName.Replace(" ", "_"))
+            };
+
+            webView.NavigationStarting += (s, e) =>
+            {
+                if (e.Uri?.StartsWith("http://") == true)
+                {
+                    webView.CoreWebView2?.Navigate(e.Uri);
+                }
+            };
+
+            // Inicializa o WebView2
+            _ = InitializeWebViewAsync(webView, htmlPath);
+            Grid.SetRow(webView, 1);
+
+            grid.Children.Add(toolbar);
+            grid.Children.Add(webView);
+            newTab.Content = grid;
+
+            // Adiciona a aba e seleciona
+            ChromeTabControl.Items.Add(newTab);
+            ChromeTabControl.SelectedItem = newTab;
+
+            StatusMessage = $"Módulo {moduleName} aberto em nova aba.";
+        }
+
+        private async System.Threading.Tasks.Task InitializeWebViewAsync(WebView2 webView, string htmlPath)
+        {
+            try
+            {
+                await webView.EnsureCoreWebView2Async();
+                
+                if (webView.CoreWebView2 != null)
+                {
+                    // Configurações para permitir conteúdo HTTP
+                    webView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = true;
+                    webView.CoreWebView2.Settings.AreDevToolsEnabled = true;
+                    
+                    webView.Source = new Uri(Path.GetFullPath(htmlPath));
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show($"Erro ao inicializar WebView2: {ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private static bool IsYouTubeUrl(string url)
