@@ -7,9 +7,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
-    <Version>1.0.33</Version>
-    <FileVersion>1.0.33</FileVersion>
-    <AssemblyVersion>1.0.33</AssemblyVersion>
+    <Version>1.0.34</Version>
+    <FileVersion>1.0.34</FileVersion>
+    <AssemblyVersion>1.0.34</AssemblyVersion>
     <Authors>MEU GESTOR DE VODS</Authors>
     <Description>Gerenciador de VODs para IPTV M3U</Description>
   </PropertyGroup>
