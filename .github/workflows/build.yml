@@ -41,6 +41,42 @@ jobs:
         shell: pwsh
         run: Set-Content -Path output\version.txt -Value $env:APP_VERSION -Encoding utf8
 
+      - name: Write Release Notes File
+        shell: pwsh
+        run: |
+          $default = @(
+            "Melhorias desta versao:",
+            "- Ajustes visuais e de usabilidade.",
+            "- Correcoes de estabilidade.",
+            "- Aprimoramentos de desempenho."
+          )
+
+          if (Test-Path "update.json") {
+            try {
+              $manifest = Get-Content "update.json" -Raw | ConvertFrom-Json
+              $version = if ($manifest.version) { [string]$manifest.version } else { $env:APP_VERSION }
+              $notes = @()
+              if ($manifest.notes) {
+                foreach ($n in $manifest.notes) {
+                  if ($n -and $n.ToString().Trim() -ne "") {
+                    $notes += "- $($n.ToString().Trim())"
+                  }
+                }
+              }
+
+              if ($notes.Count -gt 0) {
+                @("Versao: $version", "", "Melhorias implementadas:") + $notes |
+                  Set-Content -Path output\release-notes.txt -Encoding utf8
+              } else {
+                $default | Set-Content -Path output\release-notes.txt -Encoding utf8
+              }
+            } catch {
+              $default | Set-Content -Path output\release-notes.txt -Encoding utf8
+            }
+          } else {
+            $default | Set-Content -Path output\release-notes.txt -Encoding utf8
+          }
+
       - name: Install Inno Setup
         run: choco install innosetup --no-progress -y
 

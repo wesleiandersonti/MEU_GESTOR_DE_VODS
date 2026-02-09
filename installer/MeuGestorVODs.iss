@@ -33,6 +33,7 @@ Name: "autostart"; Description: "Iniciar com o Windows"; GroupDescription: "Opco
 
 [Files]
 Source: "..\output\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\output\release-notes.txt"; Flags: dontcopy skipifsourcedoesntexist
 
 [Icons]
 Name: "{group}\MEU GESTOR DE VODS"; Filename: "{app}\{#MyAppExeName}"; Tasks: startmenuicon
@@ -44,3 +45,54 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Executar MEU GESTOR DE VODS"; Flags: nowait postinstall skipifsilent
+
+[Code]
+var
+  ChangelogPage: TWizardPage;
+  ChangelogMemo: TNewMemo;
+
+function GetReleaseNotesText: string;
+var
+  NotesPath: string;
+  Notes: string;
+begin
+  Result :=
+    'Melhorias desta versao:' + #13#10 +
+    '- Ajustes visuais e de usabilidade.' + #13#10 +
+    '- Correcoes de estabilidade.' + #13#10 +
+    '- Aprimoramentos de desempenho.';
+
+  try
+    ExtractTemporaryFile('release-notes.txt');
+    NotesPath := ExpandConstant('{tmp}\release-notes.txt');
+    if LoadStringFromFile(NotesPath, Notes) then
+    begin
+      Notes := Trim(Notes);
+      if Notes <> '' then
+      begin
+        Result := Notes;
+      end;
+    end;
+  except
+  end;
+end;
+
+procedure InitializeWizard;
+begin
+  ChangelogPage := CreateCustomPage(
+    wpWelcome,
+    'Novidades da versao',
+    'Veja as melhorias implementadas nesta versao antes de instalar.'
+  );
+
+  ChangelogMemo := TNewMemo.Create(ChangelogPage.Surface);
+  ChangelogMemo.Parent := ChangelogPage.Surface;
+  ChangelogMemo.Left := ScaleX(0);
+  ChangelogMemo.Top := ScaleY(0);
+  ChangelogMemo.Width := ChangelogPage.SurfaceWidth;
+  ChangelogMemo.Height := ChangelogPage.SurfaceHeight;
+  ChangelogMemo.ReadOnly := True;
+  ChangelogMemo.ScrollBars := ssVertical;
+  ChangelogMemo.WordWrap := True;
+  ChangelogMemo.Text := GetReleaseNotesText;
+end;
