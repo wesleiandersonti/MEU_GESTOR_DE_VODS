@@ -37,20 +37,21 @@
         <Border Grid.Row="0" Background="{DynamicResource HeaderBackgroundBrush}" Padding="8,6" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
             <Grid>
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Text="MEU GESTOR DE VODS" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource HeaderForegroundBrush}" VerticalAlignment="Center"/>
-                <Button Grid.Column="1"
-                        x:Name="ThemeButton"
+
+                <Button Grid.Column="0"
+                        x:Name="MainMenuButton"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"
                         Width="44"
                         Height="34"
                         Padding="0"
-                        Margin="10,0,0,0"
+                        Margin="0,0,10,0"
                         Click="ThemeButton_Click"
                         ToolTip="Menu">
                     <Button.Template>
@@ -77,18 +78,37 @@
                     <Button.ContextMenu>
                         <ContextMenu>
                             <MenuItem Header="Histórico de URLs" Click="ShowUrlHistory_Click"/>
-                            <Separator/>
-                            <MenuItem Header="Tema Claro" Click="ThemeLight_Click"/>
-                            <MenuItem Header="Tema Escuro" Click="ThemeDark_Click"/>
-                            <MenuItem Header="Tema do Sistema" Click="ThemeSystem_Click"/>
-                            <Separator/>
                             <MenuItem Header="Estatísticas BD" Click="ShowDatabaseStats_Click"/>
                             <MenuItem Header="GitHub" Click="OpenGitHub_Click"/>
                         </ContextMenu>
                     </Button.ContextMenu>
                 </Button>
 
+                <TextBlock Grid.Column="1"
+                           Text="MEU GESTOR DE VODS"
+                           FontSize="20"
+                           FontWeight="Bold"
+                           Foreground="{DynamicResource HeaderForegroundBrush}"
+                           VerticalAlignment="Center"/>
+
                 <Button Grid.Column="2"
+                        x:Name="ThemeButton"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True"
+                        Content="{Binding ThemeButtonText}"
+                        Padding="10,4"
+                        Margin="10,0,0,0"
+                        Click="ThemeButton_Click"
+                        ToolTip="Muda tema: Claro, Escuro ou Sistema">
+                    <Button.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="Tema Claro" Click="ThemeLight_Click"/>
+                            <MenuItem Header="Tema Escuro" Click="ThemeDark_Click"/>
+                            <MenuItem Header="Tema do Sistema" Click="ThemeSystem_Click"/>
+                        </ContextMenu>
+                    </Button.ContextMenu>
+                </Button>
+
+                <Button Grid.Column="3"
                         x:Name="MinimizeWindowButton"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"
                         Content="—"
@@ -99,7 +119,7 @@
                         Click="MinimizeWindow_Click"
                         ToolTip="Minimizar janela"/>
 
-                <Button Grid.Column="3"
+                <Button Grid.Column="4"
                         x:Name="MaximizeRestoreWindowButton"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"
                         Content="▢"
@@ -110,7 +130,7 @@
                         Click="MaximizeRestoreWindow_Click"
                         ToolTip="Maximizar / Restaurar"/>
 
-                <Button Grid.Column="4"
+                <Button Grid.Column="5"
                         x:Name="CloseWindowButton"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"
                         Content="✕"
