@@ -277,6 +277,21 @@
     background: #ff0a16;
   }
 
+  .btn-config {
+    background: #2196F3;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: background 0.3s ease;
+  }
+
+  .btn-config:hover {
+    background: #1976D2;
+  }
+
   .offline-badge {
     background: var(--netflix-red);
     color: white;
@@ -374,6 +389,7 @@
 <div id="update-info" class="update-info" style="display: none;">
   <span id="last-update">Nunca atualizado</span>
   <button class="btn-atualizar" onclick="atualizarDados()">Atualizar</button>
+  <button class="btn-config" onclick="openConfigModal()" style="background: #2196F3; margin-left: 10px;">⚙️ Configurar Links</button>
 </div>
 
 <div id="player-controls">
@@ -407,8 +423,11 @@
 
   // IndexedDB Configuration
   const DB_NAME = 'LisoFlixDB';
-  const DB_VERSION = 1;
+  const DB_VERSION = 2; // Incrementado para adicionar store de links M3U8
   let db = null;
+  
+  // Configuração de links M3U8 personalizados (apenas usuário pode configurar)
+  let customM3U8Links = [];
 
   // Initialize IndexedDB
   function initDB() {
@@ -441,6 +460,23 @@
         // Store for metadata
         if (!database.objectStoreNames.contains('metadata')) {
           database.createObjectStore('metadata', { keyPath: 'key' });
+        }
+        
+        // Store for custom M3U8 links (user configured only)
+        if (!database.objectStoreNames.contains('customLinks')) {
+          const linksStore = database.createObjectStore('customLinks', { keyPath: 'id', autoIncrement: true });
+          linksStore.createIndex('name', 'name', { unique: false });
+          linksStore.createIndex('url', 'url', { unique: true });
+          linksStore.createIndex('lastPlayed', 'lastPlayed', { unique: false });
+        }
+        
+        // Store for playback history (tracks what was played and when)
+        if (!database.objectStoreNames.contains('playbackHistory')) {
+          const historyStore = database.createObjectStore('playbackHistory', { keyPath: 'id', autoIncrement: true });
+          historyStore.createIndex('contentName', 'contentName', { unique: false });
+          historyStore.createIndex('contentUrl', 'contentUrl', { unique: false });
+          historyStore.createIndex('timestamp', 'timestamp', { unique: false });
+          historyStore.createIndex('source', 'source', { unique: false }); // 'custom' ou 'api'
         }
       };
     });
@@ -533,6 +569,356 @@
     }
   }
 
+  // ============================================
+  // CUSTOM M3U8 LINKS MANAGEMENT
+  // ============================================
+  
+  // Add custom M3U8 link
+  async function addCustomM3U8Link(name, url) {
+    if (!db) await initDB();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['customLinks'], 'readwrite');
+      const store = transaction.objectStore('customLinks');
+      
+      const link = {
+        name: name,
+        url: url,
+        addedDate: new Date().toISOString(),
+        lastPlayed: null,
+        playCount: 0
+      };
+      
+      const request = store.add(link);
+      
+      request.onsuccess = () => {
+        console.log('Link M3U8 adicionado:', name);
+        resolve(request.result);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+  
+  // Load all custom M3U8 links
+  async function loadCustomM3U8Links() {
+    if (!db) await initDB();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['customLinks'], 'readonly');
+      const store = transaction.objectStore('customLinks');
+      const request = store.getAll();
+      
+      request.onsuccess = () => {
+        customM3U8Links = request.result;
+        resolve(request.result);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+  
+  // Update last played timestamp
+  async function updateLinkLastPlayed(linkId) {
+    if (!db) await initDB();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['customLinks'], 'readwrite');
+      const store = transaction.objectStore('customLinks');
+      
+      const getRequest = store.get(linkId);
+      
+      getRequest.onsuccess = () => {
+        const link = getRequest.result;
+        if (link) {
+          link.lastPlayed = new Date().toISOString();
+          link.playCount = (link.playCount || 0) + 1;
+          
+          const updateRequest = store.put(link);
+          updateRequest.onsuccess = () => resolve();
+          updateRequest.onerror = () => reject(updateRequest.error);
+        } else {
+          resolve();
+        }
+      };
+      getRequest.onerror = () => reject(getRequest.error);
+    });
+  }
+  
+  // Delete custom link
+  async function deleteCustomM3U8Link(linkId) {
+    if (!db) await initDB();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['customLinks'], 'readwrite');
+      const store = transaction.objectStore('customLinks');
+      
+      const request = store.delete(linkId);
+      
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+  
+  // ============================================
+  // PLAYBACK HISTORY
+  // ============================================
+  
+  // Save playback to history
+  async function savePlaybackHistory(contentName, contentUrl, source) {
+    if (!db) await initDB();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['playbackHistory'], 'readwrite');
+      const store = transaction.objectStore('playbackHistory');
+      
+      const historyEntry = {
+        contentName: contentName,
+        contentUrl: contentUrl,
+        timestamp: new Date().toISOString(),
+        source: source // 'custom' ou 'api'
+      };
+      
+      const request = store.add(historyEntry);
+      
+      request.onsuccess = () => {
+        console.log('Reprodução salva no histórico:', contentName);
+        resolve(request.result);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+  
+  // Load playback history
+  async function loadPlaybackHistory(limit = 50) {
+    if (!db) await initDB();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['playbackHistory'], 'readonly');
+      const store = transaction.objectStore('playbackHistory');
+      const index = store.index('timestamp');
+      
+      const request = index.openCursor(null, 'prev');
+      const results = [];
+      
+      request.onsuccess = (event) => {
+        const cursor = event.target.result;
+        if (cursor && results.length < limit) {
+          results.push(cursor.value);
+          cursor.continue();
+        } else {
+          resolve(results);
+        }
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+  
+  // ============================================
+  // CONFIGURATION INTERFACE
+  // ============================================
+  
+  // Open configuration modal for custom links
+  function openConfigModal() {
+    const modal = document.createElement('div');
+    modal.id = 'config-modal';
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.9);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: "Netflix Sans", "Helvetica Neue", Arial, sans-serif;
+    `;
+    
+    const content = document.createElement('div');
+    content.style.cssText = `
+      background: #1a1a1a;
+      width: 90%;
+      max-width: 700px;
+      max-height: 80vh;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+    `;
+    
+    content.innerHTML = `
+      <div style="background: #e50914; padding: 20px; display: flex; justify-content: space-between; align-items: center;">
+        <h2 style="margin: 0; color: white; font-size: 1.5em;">⚙️ Configuração de Links M3U8</h2>
+        <button onclick="closeConfigModal()" style="background: transparent; border: none; color: white; font-size: 24px; cursor: pointer;">×</button>
+      </div>
+      
+      <div style="padding: 20px; max-height: calc(80vh - 140px); overflow-y: auto;">
+        <div style="background: #2a2a2a; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+          <h3 style="margin: 0 0 15px 0; color: #e50914; font-size: 1.1em;">➕ Adicionar Novo Link</h3>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <input type="text" id="new-link-name" placeholder="Nome do canal/conteúdo" style="flex: 1; min-width: 200px; padding: 10px; border: 1px solid #444; background: #1a1a1a; color: white; border-radius: 4px;">
+            <input type="text" id="new-link-url" placeholder="URL M3U8" style="flex: 2; min-width: 300px; padding: 10px; border: 1px solid #444; background: #1a1a1a; color: white; border-radius: 4px;">
+            <button onclick="addNewLinkFromModal()" style="padding: 10px 20px; background: #e50914; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Adicionar</button>
+          </div>
+        </div>
+        
+        <div id="custom-links-list" style="margin-top: 20px;">
+          <h3 style="color: #fff; margin-bottom: 15px;">📺 Meus Links Configurados</h3>
+          <div id="links-container" style="display: flex; flex-direction: column; gap: 10px;">
+            <p style="color: #888; text-align: center; padding: 20px;">Carregando links...</p>
+          </div>
+        </div>
+        
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #333;">
+          <h3 style="color: #fff; margin-bottom: 15px;">📊 Estatísticas</h3>
+          <div id="config-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+            <div style="background: #2a2a2a; padding: 15px; border-radius: 8px; text-align: center;">
+              <div style="font-size: 24px; color: #e50914; font-weight: bold;" id="stat-total-links">0</div>
+              <div style="color: #888; font-size: 12px;">Links Configurados</div>
+            </div>
+            <div style="background: #2a2a2a; padding: 15px; border-radius: 8px; text-align: center;">
+              <div style="font-size: 24px; color: #e50914; font-weight: bold;" id="stat-total-plays">0</div>
+              <div style="color: #888; font-size: 12px;">Reproduções Totais</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+    
+    // Load links
+    loadAndDisplayCustomLinks();
+  }
+  
+  // Close configuration modal
+  function closeConfigModal() {
+    const modal = document.getElementById('config-modal');
+    if (modal) {
+      modal.remove();
+    }
+  }
+  
+  // Load and display custom links in modal
+  async function loadAndDisplayCustomLinks() {
+    try {
+      const links = await loadCustomM3U8Links();
+      const container = document.getElementById('links-container');
+      const statTotalLinks = document.getElementById('stat-total-links');
+      
+      if (statTotalLinks) {
+        statTotalLinks.textContent = links.length;
+      }
+      
+      if (links.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 40px; color: #666;">
+            <p style="font-size: 16px; margin-bottom: 10px;">Nenhum link M3U8 configurado ainda.</p>
+            <p style="font-size: 13px;">Adicione seus links personalizados acima.</p>
+          </div>
+        `;
+        return;
+      }
+      
+      let totalPlays = 0;
+      container.innerHTML = links.map(link => {
+        totalPlays += link.playCount || 0;
+        const lastPlayed = link.lastPlayed 
+          ? new Date(link.lastPlayed).toLocaleString('pt-BR') 
+          : 'Nunca reproduzido';
+        
+        return `
+          <div style="background: #2a2a2a; padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #e50914;">
+            <div style="flex: 1;">
+              <div style="font-weight: bold; color: #fff; margin-bottom: 5px;">${link.name}</div>
+              <div style="font-size: 12px; color: #888; word-break: break-all;">${link.url}</div>
+              <div style="font-size: 11px; color: #666; margin-top: 5px;">
+                <span style="color: #e50914;">▶ ${link.playCount || 0} reproduções</span> • Última: ${lastPlayed}
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px; margin-left: 15px;">
+              <button onclick="playCustomLink(${link.id}, '${link.name}', '${link.url}')" style="padding: 8px 15px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">▶ Reproduzir</button>
+              <button onclick="deleteLinkFromModal(${link.id})" style="padding: 8px 15px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">🗑️ Excluir</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+      
+      const statTotalPlays = document.getElementById('stat-total-plays');
+      if (statTotalPlays) {
+        statTotalPlays.textContent = totalPlays;
+      }
+    } catch (error) {
+      console.error('Erro ao carregar links:', error);
+      document.getElementById('links-container').innerHTML = `
+        <p style="color: #f44336; text-align: center; padding: 20px;">Erro ao carregar links. Tente novamente.</p>
+      `;
+    }
+  }
+  
+  // Add new link from modal
+  async function addNewLinkFromModal() {
+    const nameInput = document.getElementById('new-link-name');
+    const urlInput = document.getElementById('new-link-url');
+    
+    const name = nameInput.value.trim();
+    const url = urlInput.value.trim();
+    
+    if (!name || !url) {
+      alert('Por favor, preencha o nome e a URL do link.');
+      return;
+    }
+    
+    if (!url.endsWith('.m3u8') && !url.includes('.m3u8?')) {
+      if (!confirm('A URL não parece ser um arquivo M3U8. Deseja adicionar mesmo assim?')) {
+        return;
+      }
+    }
+    
+    try {
+      await addCustomM3U8Link(name, url);
+      nameInput.value = '';
+      urlInput.value = '';
+      await loadAndDisplayCustomLinks();
+      alert('Link adicionado com sucesso!');
+    } catch (error) {
+      alert('Erro ao adicionar link. Verifique se a URL já não existe.');
+    }
+  }
+  
+  // Play custom link
+  async function playCustomLink(linkId, name, url) {
+    try {
+      // Update last played
+      await updateLinkLastPlayed(linkId);
+      
+      // Save to playback history
+      await savePlaybackHistory(name, url, 'custom');
+      
+      // Open player
+      abrirPlayer(url, name, 'custom');
+      
+      console.log('Reproduzindo link personalizado:', name);
+    } catch (error) {
+      console.error('Erro ao reproduzir link:', error);
+      alert('Erro ao reproduzir o link. Tente novamente.');
+    }
+  }
+  
+  // Delete link from modal
+  async function deleteLinkFromModal(linkId) {
+    if (!confirm('Tem certeza que deseja excluir este link?')) {
+      return;
+    }
+    
+    try {
+      await deleteCustomM3U8Link(linkId);
+      await loadAndDisplayCustomLinks();
+    } catch (error) {
+      alert('Erro ao excluir link.');
+    }
+  }
+
   window.addEventListener("scroll", () => {
     if (window.scrollY > 30) {
       header.style.backgroundColor = "rgba(0, 0, 0, 0.3)";
@@ -550,7 +936,7 @@
   function playerBack() { const p = document.getElementById("player"); p.currentTime -= 10; }
   function playerForward() { const p = document.getElementById("player"); p.currentTime += 10; }
 
-  function exibirPlayer(link, item = null) {
+  function exibirPlayer(link, item = null, source = 'api') {
     const player = document.getElementById("player");
     const controls = document.getElementById("player-controls");
     player.src = link;
@@ -559,6 +945,12 @@
     player.play();
     window.scrollTo({ top: 0, behavior: "smooth" });
     if (item) registrarUltimo(item);
+    
+    // Salvar no histórico de reprodução (banco de dados IndexedDB)
+    const contentName = item ? item.name : 'Conteúdo desconhecido';
+    savePlaybackHistory(contentName, link, source).catch(err => {
+      console.log('Erro ao salvar histórico:', err);
+    });
   }
 
   function ocultarPlayer() {

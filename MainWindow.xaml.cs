@@ -1572,6 +1572,182 @@ namespace MeuGestorVODs
             OpenLisoFlixInWebView(filePath);
         }
 
+        private void CastToDevice_Click(object sender, RoutedEventArgs e)
+        {
+            // Verifica se há itens selecionados
+            var selectedEntries = EntriesList?.SelectedItems.Cast<PlaylistEntry>().ToList();
+            
+            if (selectedEntries == null || selectedEntries.Count == 0)
+            {
+                MessageBox.Show(
+                    "Selecione pelo menos um item para fazer cast.\n\n" +
+                    "Dica: Use o checkbox ao lado do nome do canal/VOD.",
+                    "Cast para Dispositivos",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+            }
+
+            // Abre janela de seleção de dispositivos
+            OpenCastDeviceWindow(selectedEntries);
+        }
+
+        private void OpenCastDeviceWindow(List<PlaylistEntry> entries)
+        {
+            var castWindow = new System.Windows.Window
+            {
+                Title = "Cast para Dispositivos na Rede",
+                Width = 600,
+                Height = 500,
+                MinWidth = 500,
+                MinHeight = 400,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                Owner = this,
+                Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(245, 245, 245))
+            };
+
+            var mainGrid = new Grid();
+            mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+            // Header
+            var headerPanel = new System.Windows.Controls.StackPanel 
+            { 
+                Orientation = System.Windows.Controls.Orientation.Vertical,
+                Margin = new Thickness(20, 20, 20, 10)
+            };
+            
+            var titleText = new System.Windows.Controls.TextBlock
+            {
+                Text = "📺 Cast para Dispositivos",
+                FontSize = 20,
+                FontWeight = FontWeights.Bold,
+                Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(33, 33, 33))
+            };
+            
+            var subtitleText = new System.Windows.Controls.TextBlock
+            {
+                Text = $"{entries.Count} item(s) selecionado(s) para reprodução",
+                FontSize = 12,
+                Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(100, 100, 100)),
+                Margin = new Thickness(0, 5, 0, 0)
+            };
+            
+            headerPanel.Children.Add(titleText);
+            headerPanel.Children.Add(subtitleText);
+            Grid.SetRow(headerPanel, 0);
+
+            // Lista de dispositivos simulada (em produção, usar UPnP/DLNA discovery)
+            var devicesListBox = new System.Windows.Controls.ListBox
+            {
+                Margin = new Thickness(20, 10, 20, 10),
+                Background = System.Windows.Media.Brushes.White,
+                BorderBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(200, 200, 200)),
+                BorderThickness = new Thickness(1)
+            };
+
+            // Dispositivos de exemplo (em produção, isso seria dinâmico)
+            var devices = new[]
+            {
+                "📱 Smart TV - Sala (192.168.1.100)",
+                "📺 TV Quarto - Samsung (192.168.1.105)",
+                "🔥 Chromecast - Cozinha (192.168.1.110)",
+                "📻 Roku - Escritório (192.168.1.115)",
+                "🎮 Xbox Series X (192.168.1.120)",
+                "🖥️ PC - Escritório (192.168.1.50)"
+            };
+
+            foreach (var device in devices)
+            {
+                devicesListBox.Items.Add(device);
+            }
+            Grid.SetRow(devicesListBox, 1);
+
+            // Botões de ação
+            var buttonPanel = new System.Windows.Controls.StackPanel
+            {
+                Orientation = System.Windows.Controls.Orientation.Horizontal,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
+                Margin = new Thickness(20)
+            };
+
+            var scanButton = new System.Windows.Controls.Button
+            {
+                Content = "🔍 Escanear Rede",
+                Padding = new Thickness(15, 8, 15, 8),
+                Margin = new Thickness(0, 0, 10, 0),
+                Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(33, 150, 243)),
+                Foreground = System.Windows.Media.Brushes.White,
+                FontWeight = FontWeights.SemiBold
+            };
+            scanButton.Click += (s, ev) =>
+            {
+                MessageBox.Show(
+                    "Escaneando dispositivos na rede...\n\n" +
+                    "Funcionalidade em desenvolvimento.\n" +
+                    "Na versão completa, buscaria dispositivos DLNA/UPnP.",
+                    "Escanear Rede",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            };
+
+            var castButton = new System.Windows.Controls.Button
+            {
+                Content = "▶️ Iniciar Cast",
+                Padding = new Thickness(15, 8, 15, 8),
+                Margin = new Thickness(0, 0, 10, 0),
+                Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(76, 175, 80)),
+                Foreground = System.Windows.Media.Brushes.White,
+                FontWeight = FontWeights.SemiBold
+            };
+            castButton.Click += (s, ev) =>
+            {
+                if (devicesListBox.SelectedItem == null)
+                {
+                    MessageBox.Show(
+                        "Selecione um dispositivo para fazer cast.",
+                        "Cast",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
+
+                var selectedDevice = devicesListBox.SelectedItem.ToString();
+                var firstEntry = entries.First();
+                
+                MessageBox.Show(
+                    $"Iniciando cast para:\n{selectedDevice}\n\n" +
+                    $"Conteúdo: {firstEntry.Name}\n" +
+                    $"URL: {firstEntry.Url}\n\n" +
+                    "Na versão completa, enviaria o comando de reprodução para o dispositivo.",
+                    "Cast Iniciado",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            };
+
+            var cancelButton = new System.Windows.Controls.Button
+            {
+                Content = "Cancelar",
+                Padding = new Thickness(15, 8, 15, 8),
+                Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(158, 158, 158)),
+                Foreground = System.Windows.Media.Brushes.White
+            };
+            cancelButton.Click += (s, ev) => castWindow.Close();
+
+            buttonPanel.Children.Add(scanButton);
+            buttonPanel.Children.Add(castButton);
+            buttonPanel.Children.Add(cancelButton);
+            Grid.SetRow(buttonPanel, 2);
+
+            mainGrid.Children.Add(headerPanel);
+            mainGrid.Children.Add(devicesListBox);
+            mainGrid.Children.Add(buttonPanel);
+
+            castWindow.Content = mainGrid;
+            castWindow.ShowDialog();
+        }
+
         private void OpenLisoFlixInWebView(string htmlPath)
         {
             var window = new System.Windows.Window

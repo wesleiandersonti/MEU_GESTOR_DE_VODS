@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LisoFlix</title>
+<style>
+  @import url("https://fonts.cdnfonts.com/css/netflix-sans");
+
+  :root {
+    --netflix-red: #e50914;
+    --netflix-black: #000000;
+    --netflix-dark-gray: #141414;
+    --netflix-medium-gray: #333333;
+    --netflix-light-gray: #808080;
+    --netflix-white: #ffffff;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    background-color: var(--netflix-black);
+    font-family: "Netflix Sans", "Helvetica Neue", Arial, sans-serif;
+    color: var(--netflix-white);
+    overflow-x: hidden;
+  }
+
+  header {
+    background-color: rgba(0, 0, 0, 1);
+    padding: 14px 4%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    transition: background-color 0.3s ease;
+  }
+
+  .logo {
+    font-size: 1.8em;
+    font-weight: bold;
+    color: var(--netflix-white);
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.6);
+    flex-shrink: 0;
+  }
+
+  .logo span {
+    color: var(--netflix-red);
+    font-style: italic;
+    transform: skewX(-10deg);
+    display: inline-block;
+  }
+
+  nav {
+    display: flex;
+    gap: 14px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    flex-grow: 1;
+    justify-content: flex-end;
+  }
+  nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  nav button {
+    background: none;
+    border: none;
+    color: var(--netflix-light-gray);
+    font-size: 1em;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 6px 0;
+    border-bottom: 3px solid transparent;
+    transition: color 0.3s ease, border-bottom 0.3s ease;
+    flex-shrink: 0;
+  }
+
+  nav button.active {
+    color: var(--netflix-white);
+    border-bottom: 3px solid var(--netflix-red);
+  }
+
+  .hero-banner {
+    position: relative;
+    height: 60vh;
+    background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.8)), url("https://image.tmdb.org/t/p/original/xOMo8BRK7PfcJv9JCnx7s5hj0PX.jpg");
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 0 4%;
+  }
+  
+  .hero-content {
+    max-width: 500px;
+    color: var(--netflix-white);
+  }
+  
+  .hero-title {
+    font-size: 3rem;
+    font-weight: bold;
+    margin-bottom: 15px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+  }
+  
+  .hero-description {
+    font-size: 1.2rem;
+    margin-bottom: 25px;
+    line-height: 1.4;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+  }
+  
+  .hero-buttons {
+    display: flex;
+    gap: 15px;
+  }
+  
+  .btn-play, .btn-info {
+    padding: 12px 30px;
+    border: none;
+    border-radius: 6px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  
+  .btn-play {
+    background: var(--netflix-white);
+    color: var(--netflix-black);
+  }
+  
+  .btn-play:hover {
+    background: rgba(255,255,255,0.8);
+  }
+  
+  .btn-info {
+    background: rgba(109, 109, 110, 0.7);
+    color: var(--netflix-white);
+  }
+  
+  .btn-info:hover {
+    background: rgba(109, 109, 110, 0.5);
+  }
+
+  .carousel, .grid {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 8px;
+    padding: 0 4% 20px 4%;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .carousel::-webkit-scrollbar {
+    display: none;
+  }
+  .grid {
+    flex-wrap: wrap;
+    justify-content: center;
+    overflow-x: hidden;
+  }
+  .item {
+    width: 200px;
+    background: transparent;
+    border-radius: 8px;
+    overflow: hidden;
+    text-align: left;
+    flex-shrink: 0;
+    position: relative;
+    transition: transform 0.3s ease;
+    cursor: pointer;
+  }
+  .item:hover {
+    transform: scale(1.08);
+    z-index: 10;
+  }
+  .item img {
+    width: 100%;
+    height: 300px;
+    object-fit: cover;
+    border-radius: 8px;
+  }
+  .item p {
+    margin: 8px 0;
+    font-size: 0.9rem;
+    color: var(--netflix-light-gray);
+    font-weight: 500;
+  }
+  .img-container {
+    position: relative;
+    overflow: hidden;
+    border-radius: 8px;
+  }
+  .fav-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 1.4em;
+    cursor: pointer;
+    text-shadow: 0 0 8px black;
+    user-select: none;
+    background: rgba(0,0,0,0.6);
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+  }
+  .fav-btn:hover {
+    background: rgba(0,0,0,0.8);
+    transform: scale(1.1);
+  }
+  .category {
+    margin-bottom: 40px;
+  }
+  .category h2 {
+    margin: 0 0 15px 4%;
+    font-size: 1.4em;
+    color: var(--netflix-white);
+    font-weight: bold;
+  }
+  
+  .loading-spinner {
+    display: inline-block;
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--netflix-medium-gray);
+    border-top: 3px solid var(--netflix-red);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 20px auto;
+    text-align: center;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  video {
+    width: 100%;
+    max-height: 50vh;
+    display: none;
+    margin-bottom: 10px;
+  }
+  .btn-voltar {
+    margin: 10px;
+    padding: 8px 16px;
+    background: var(--netflix-red);
+    border: none;
+    color: var(--netflix-white);
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  #conteudo {
+    padding: 0;
+  }
+  .episodes button {
+    display: block;
+    width: 100%;
+    margin: 4px 0;
+    background: var(--netflix-medium-gray);
+    color: var(--netflix-white);
+    border: none;
+    padding: 10px;
+    border-radius: 6px;
+    text-align: left;
+    cursor: pointer;
+  }
+  #player-controls {
+    display: none;
+    justify-content: center;
+    gap: 10px;
+    margin: 10px 0;
+    flex-wrap: wrap;
+  }
+  #player-controls button {
+    background: var(--netflix-red);
+    color: var(--netflix-white);
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+
+  @media (max-width: 768px) {
+    .hero-content {
+      margin-left: 0;
+    }
+    .hero-title {
+      font-size: 2rem;
+    }
+    .hero-description {
+      font-size: 1rem;
+    }
+    .carousel, .grid {
+      padding: 0 20px 20px 20px;
+    }
+    .category h2 {
+      margin: 0 0 15px 20px;
+    }
+    .item {
+      width: 150px;
+    }
+    .item img {
+      height: 225px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<header id="header">
+  <div class="logo"><span>L</span>iso<span>F</span>lix</div>
+  <nav>
+    <button id="tab-home" class="active">Início</button>
+    <button id="tab-filmes">Filmes</button>
+    <button id="tab-series">Séries</button>
+    <button id="tab-favoritos">Favoritos</button>
+  </nav>
+</header>
+
+<div id="player-controls">
+  <button onclick="playerPlay()">Play</button>
+  <button onclick="playerPause()">Pause</button>
+  <button onclick="playerStop()">Stop</button>
+  <button onclick="playerBack()">-10s</button>
+  <button onclick="playerForward()">+10s</button>
+</div>
+<video controls="" id="player"></video>
+
+<div id="conteudo">
+  <div style="text-align: center; padding: 50px;"><div class="loading-spinner"></div></div>
+</div>
+
+<script>
+  const header = document.getElementById("header");
+  const homeBtn = document.getElementById("tab-home");
+  const filmesBtn = document.getElementById("tab-filmes");
+  const seriesBtn = document.getElementById("tab-series");
+  const favoritosBtn = document.getElementById("tab-favoritos");
+  const conteudoDiv = document.getElementById("conteudo");
+
+  let filmes = {};
+  let series = {};
+  let streamBase = "";
+  let urlG = "http://flayto.click";
+  let userG = "felipe96452";
+  let passG = "8761dias";
+  let favoritos = JSON.parse(localStorage.getItem("favoritos") || "[]");
+
+  window.addEventListener("scroll", () => {
+    if (window.scrollY > 30) {
+      header.style.backgroundColor = "rgba(0, 0, 0, 0.3)";
+    } else {
+      header.style.backgroundColor = "rgba(0, 0, 0, 1)";
+    }
+  });
+
+  function playerPlay() { document.getElementById("player").play(); }
+  function playerPause() { document.getElementById("player").pause(); }
+  function playerStop() {
+    const p = document.getElementById("player");
+    p.pause(); p.currentTime = 0;
+  }
+  function playerBack() { const p = document.getElementById("player"); p.currentTime -= 10; }
+  function playerForward() { const p = document.getElementById("player"); p.currentTime += 10; }
+
+  function exibirPlayer(link, item = null) {
+    const player = document.getElementById("player");
+    const controls = document.getElementById("player-controls");
+    player.src = link;
+    player.style.display = "block";
+    controls.style.display = "flex";
+    player.play();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (item) registrarUltimo(item);
+  }
+
+  function ocultarPlayer() {
+    const player = document.getElementById("player");
+    const controls = document.getElementById("player-controls");
+    player.pause();
+    player.removeAttribute("src");
+    player.load();
+    player.style.display = "none";
+    controls.style.display = "none";
+  }
+
+  function organizarPorCategoria(lista) {
+    const categorias = {};
+    lista.forEach(item => {
+      const cat = item.category_name || "Outros";
+      if (!categorias[cat]) categorias[cat] = [];
+      if (!categorias[cat].some(i => i.name === item.name)) {
+        categorias[cat].push(item);
+      }
+    });
+    return categorias;
+  }
+
+  function registrarUltimo(item) {
+    let ultimos = JSON.parse(localStorage.getItem("ultimos") || "[]");
+    ultimos = ultimos.filter(i => i.name !== item.name);
+    ultimos.unshift(item);
+    if (ultimos.length > 50) ultimos.pop();
+    localStorage.setItem("ultimos", JSON.stringify(ultimos));
+  }
+
+  function alternarFavorito(item) {
+    const idx = favoritos.findIndex(i => i.name === item.name);
+    if (idx >= 0) favoritos.splice(idx, 1);
+    else favoritos.unshift(item);
+    localStorage.setItem("favoritos", JSON.stringify(favoritos));
+  }
+
+  function resetarAbas() {
+    homeBtn.classList.remove("active");
+    filmesBtn.classList.remove("active");
+    seriesBtn.classList.remove("active");
+    favoritosBtn.classList.remove("active");
+  }
+
+  function renderItens(lista, isFilme = true) {
+    const grid = document.createElement("div");
+    grid.className = "grid";
+    
+    lista.forEach(item => {
+      const el = document.createElement("div");
+      el.className = "item";
+
+      const capa = isFilme ? item.stream_icon : item.cover;
+      const isFav = favoritos.some(f => f.name === item.name);
+
+      el.innerHTML = `
+        <div class="img-container">
+          <img loading="lazy" src="${capa || ""}" onerror="this.style.display=\'none\'">
+          <span class="fav-btn" title="Favoritar">${isFav ? "★" : "☆"}</span>
+        </div>
+        <p>${item.name}</p>
+      `;
+
+      el.querySelector(".img-container").onclick = () => 
+        isFilme 
+          ? exibirPlayer(`${streamBase}${item.stream_id}.mp4`, item)
+          : abrirSerieDetalhe(item.series_id, item.name);
+
+      el.querySelector(".fav-btn").onclick = (e) => {
+        e.stopPropagation();
+        alternarFavorito(item);
+        e.target.textContent = favoritos.some(f => f.name === item.name) ? "★" : "☆";
+      };
+
+      grid.appendChild(el);
+    });
+    return grid;
+  }
+
+  function abrirFilmes() {
+    ocultarPlayer();
+    resetarAbas();
+    filmesBtn.classList.add("active");
+    conteudoDiv.innerHTML = `<div style="padding: 20px;"><h2 class="category-title">Filmes <button class=\'btn-voltar\' onclick=\'renderTelaPrincipal()\'>Voltar</button></h2></div>`;
+    conteudoDiv.appendChild(renderItens(Object.values(filmes).flat(), true));
+  }
+
+  function abrirSeries() {
+    ocultarPlayer();
+    resetarAbas();
+    seriesBtn.classList.add("active");
+    conteudoDiv.innerHTML = `<div style="padding: 20px;"><h2 class="category-title">Séries <button class=\'btn-voltar\' onclick=\'renderTelaPrincipal()\'>Voltar</button></h2></div>`;
+    conteudoDiv.appendChild(renderItens(Object.values(series).flat(), false));
+  }
+
+  function abrirFavoritos() {
+    ocultarPlayer();
+    resetarAbas();
+    favoritosBtn.classList.add("active");
+    conteudoDiv.innerHTML = `<div style="padding: 20px;"><h2 class="category-title">Favoritos <button class=\'btn-voltar\' onclick=\'renderTelaPrincipal()\'>Voltar</button></h2></div>`;
+    let ultimos = JSON.parse(localStorage.getItem("ultimos") || "[]");
+    conteudoDiv.appendChild(renderItens(favoritos));
+  }
+
+  async function abrirSerieDetalhe(seriesId, seriesName) {
+    ocultarPlayer();
+    conteudoDiv.innerHTML = `<div style="padding: 20px;"><h2 class="category-title">${seriesName} <button class=\'btn-voltar\' onclick=\'abrirSeries()\'>Voltar para Séries</button></h2><div id=\'episodes-list\'>Carregando episódios...</div></div>`;
+
+    try {
+      const token = `username=${userG}&password=${passG}`;
+      const response = await fetch(`${urlG}/player_api.php?${token}&action=get_series_info&series_id=${seriesId}`);
+      const data = await response.json();
+
+      const episodesList = document.getElementById("episodes-list");
+      episodesList.innerHTML = "";
+
+      if (data.episodes && Object.keys(data.episodes).length > 0) {
+        for (const seasonNum in data.episodes) {
+          const season = data.episodes[seasonNum];
+          const seasonDiv = document.createElement("div");
+          seasonDiv.innerHTML = `<h3 class="season-title">Temporada ${seasonNum}</h3>`;
+          
+          season.forEach(episode => {
+            const episodeBtn = document.createElement("button");
+            episodeBtn.className = "episodes";
+            episodeBtn.textContent = `S${episode.season}E${episode.episode} - ${episode.title}`;
+            episodeBtn.onclick = () => exibirPlayer(`${streamBase}${episode.id}.mp4`, episode);
+            seasonDiv.appendChild(episodeBtn);
+          });
+          episodesList.appendChild(seasonDiv);
+        }
+      } else {
+        episodesList.innerHTML = "<p style=\'text-align: center; color: var(--netflix-light-gray); padding: 40px;\'>Nenhum episódio encontrado para esta série.</p>";
+      }
+
+    } catch (e) {
+      console.error("Erro ao carregar detalhes da série:", e);
+      conteudoDiv.innerHTML = "<p style=\'color:var(--netflix-red); padding: 20px;\'>Erro ao carregar detalhes da série.</p>";
+    }
+  }
+
+  async function renderTelaPrincipal() {
+    ocultarPlayer();
+    resetarAbas();
+    homeBtn.classList.add("active");
+    conteudoDiv.innerHTML = 
+      `<div style="text-align: center; padding: 50px;"><div class="loading-spinner"></div></div>`;
+
+    try {
+      const token = `username=${userG}&password=${passG}`;
+      const filmesPromise = fetch(`${urlG}/player_api.php?${token}&action=get_vod_streams`).then(r => r.json());
+      const seriesPromise = fetch(`${urlG}/player_api.php?${token}&action=get_series`).then(r => r.json());
+
+      const [vods, sers] = await Promise.all([filmesPromise, seriesPromise]);
+
+      streamBase = `${urlG}/movie/${userG}/${passG}/`;
+      filmes = organizarPorCategoria(vods);
+      series = organizarPorCategoria(sers);
+
+      conteudoDiv.innerHTML = "";
+
+      const heroBanner = document.createElement("div");
+      heroBanner.className = "hero-banner";
+      heroBanner.innerHTML = `
+        <div class="hero-content">
+          <h1 class="hero-title">LisoFlix</h1>
+          <p class="hero-description">Assista aos melhores filmes e séries em alta qualidade. Entretenimento ilimitado na palma da sua mão.</p>
+          <div class="hero-buttons">
+            <button class="btn-play" onclick="abrirFilmes()">Assistir Agora</button>
+            <button class="btn-info" onclick="abrirSeries()">Mais Informações</button>
+          </div>
+        </div>
+      `;
+      conteudoDiv.appendChild(heroBanner);
+
+      if (Object.keys(filmes).length) {
+        const secFilmes = document.createElement("div");
+        secFilmes.className = "category";
+        secFilmes.innerHTML = `<h2 class="category-title">Filmes em Destaque</h2>`;
+        const filmesRow = document.createElement("div");
+        filmesRow.className = "carousel";
+        
+        let filmesAdicionados = 0;
+        Object.keys(filmes).forEach(cat => {
+          if (filmesAdicionados >= 15) return;
+          filmes[cat].slice(0, Math.min(10, 15 - filmesAdicionados)).forEach(f => {
+            const item = document.createElement("div");
+            item.className = "item";
+            const isFav = favoritos.some(fav => fav.name === f.name);
+            item.innerHTML = `
+              <div class="img-container">
+                <img loading="lazy" src="${f.stream_icon || ""}" onerror="this.style.display=\'none\'">
+                <span class="fav-btn" title="Favoritar">${isFav ? "★" : "☆"}</span>
+              </div>
+              <p>${f.name}</p>
+            `;
+            
+            item.querySelector(".fav-btn").onclick = (e) => {
+              e.stopPropagation();
+              alternarFavorito(f);
+              e.target.textContent = favoritos.some(fav => fav.name === f.name) ? "★" : "☆";
+            };
+            item.querySelector(".img-container").onclick = () => exibirPlayer(`${streamBase}${f.stream_id}.mp4`, f);
+            filmesRow.appendChild(item);
+            filmesAdicionados++;
+          });
+        });
+        secFilmes.appendChild(filmesRow);
+        conteudoDiv.appendChild(secFilmes);
+
+        const catDesenhos = Object.keys(filmes).find(c => /desenho|animaç|infantil/i.test(c));
+        if (catDesenhos) {
+          const secDesenhos = document.createElement("div");
+          secDesenhos.className = "category";
+          secDesenhos.innerHTML = `<h2 class="category-title">Desenhos</h2>`;
+          const desenhosRow = document.createElement("div");
+          desenhosRow.className = "carousel";
+          filmes[catDesenhos].slice(0, 15).forEach(f => {
+            const item = document.createElement("div");
+            item.className = "item";
+            const isFav = favoritos.some(fav => fav.name === f.name);
+            item.innerHTML = `
+              <div class="img-container">
+                <img loading="lazy" src="${f.stream_icon || ""}" onerror="this.style.display=\'none\'">
+                <span class="fav-btn" title="Favoritar">${isFav ? "★" : "☆"}</span>
+              </div>
+              <p>${f.name}</p>
+            `;
+            
+            item.querySelector(".fav-btn").onclick = (e) => {
+              e.stopPropagation();
+              alternarFavorito(f);
+              e.target.textContent = favoritos.some(fav => fav.name === f.name) ? "★" : "☆";
+            };
+            item.querySelector(".img-container").onclick = () => exibirPlayer(`${streamBase}${f.stream_id}.mp4`, f);
+            desenhosRow.appendChild(item);
+          });
+          secDesenhos.appendChild(desenhosRow);
+          conteudoDiv.appendChild(secDesenhos);
+        }
+      }
+
+      if (Object.keys(series).length) {
+        const secSeries = document.createElement("div");
+        secSeries.className = "category";
+        secSeries.innerHTML = `<h2 class="category-title">Séries em Destaque</h2>`;
+        const seriesRow = document.createElement("div");
+        seriesRow.className = "carousel";
+        
+        let seriesAdicionadas = 0;
+        Object.keys(series).forEach(cat => {
+          if (seriesAdicionadas >= 15) return;
+          series[cat].slice(0, Math.min(10, 15 - seriesAdicionadas)).forEach(s => {
+            const item = document.createElement("div");
+            item.className = "item";
+            const isFav = favoritos.some(fav => fav.name === s.name);
+            item.innerHTML = `
+              <div class="img-container">
+                <img loading="lazy" src="${s.cover || ""}" onerror="this.style.display=\'none\'">
+                <span class="fav-btn" title="Favoritar">${isFav ? "★" : "☆"}</span>
+              </div>
+              <p>${s.name}</p>
+            `;
+            
+            item.querySelector(".fav-btn").onclick = (e) => {
+              e.stopPropagation();
+              alternarFavorito(s);
+              e.target.textContent = favoritos.some(fav => fav.name === s.name) ? "★" : "☆";
+            };
+            item.querySelector(".img-container").onclick = () => abrirSerieDetalhe(s.series_id, s.name);
+            seriesRow.appendChild(item);
+            seriesAdicionadas++;
+          });
+        });
+        secSeries.appendChild(seriesRow);
+        conteudoDiv.appendChild(secSeries);
+      }
+
+    } catch (e) {
+      console.error("Erro ao carregar dados da API:", e);
+      conteudoDiv.innerHTML = "<p style=\'color:var(--netflix-red); text-align:center; padding: 50px;\'>Erro ao carregar filmes e séries. Verifique a conexão ou as credenciais da API.</p>";
+    }
+  }
+
+  homeBtn.addEventListener("click", renderTelaPrincipal);
+  filmesBtn.addEventListener("click", abrirFilmes);
+  seriesBtn.addEventListener("click", abrirSeries);
+  favoritosBtn.addEventListener("click", abrirFavoritos);
+
+  renderTelaPrincipal();
+</script>
+
+</body>
+</html>
+

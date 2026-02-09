@@ -1,11 +1,16 @@
 {
-  "version": "1.0.37",
-  "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.37/MeuGestorVODs-Setup-v1.0.37.exe",
+  "version": "1.0.38",
+  "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.38/MeuGestorVODs-Setup-v1.0.38.exe",
   "sha256": "",
   "notes": [
-    "Correção: Menu hambúrguer agora abre corretamente",
-    "Correção: Restaurado evento Click no botão de menu",
-    "Correção: Opções 1-6 do menu funcionando novamente",
-    "Versão anterior: Layout e sistema de abas corrigidos"
+    "Novo: Botão Cast para reproduzir em dispositivos na mesma rede",
+    "Novo: Sistema de links M3U8 personalizados no LisoFlix",
+    "Novo: Banco de dados IndexedDB para links M3U8 no LisoFlix",
+    "Novo: Configuração exclusiva de links pelo usuário",
+    "Novo: Histórico de reprodução salvo automaticamente",
+    "Novo: Interface modal de configuração no LisoFlix",
+    "Novo: Estatísticas de reprodução de links personalizados",
+    "Melhoria: Toda reprodução é salva no banco de dados",
+    "Correções: Menu hambúrguer funcionando corretamente"
   ]
 }
