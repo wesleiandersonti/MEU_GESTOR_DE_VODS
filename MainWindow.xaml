@@ -93,12 +93,14 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Chrome-style Header with Tabs -->
+        <!-- Header: Menu + Title + Theme + Window Controls -->
         <Border Grid.Row="0" Background="{DynamicResource ChromeTabBackground}" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
             <Grid Height="38">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
@@ -111,7 +113,6 @@
                         Width="40"
                         Height="30"
                         Margin="8,4,4,4"
-                        Click="ThemeButton_Click"
                         Background="Transparent"
                         BorderThickness="0"
                         ToolTip="Menu">
@@ -129,46 +130,57 @@
                             <MenuItem Header="5 DARK M3U CHECKER" Click="MainMenuDarkM3uChecker_Click"/>
                             <MenuItem Header="6 LisoFlix" Click="MainMenuLisoFlix_Click"/>
                             <Separator/>
-                            <MenuItem Header="Nova Aba" Click="NewTab_Click"/>
                             <MenuItem Header="Nova Janela" Click="NewWindow_Click"/>
-                            <Separator/>
-                            <MenuItem Header="Tema">
-                                <MenuItem Header="Claro" Click="ThemeLight_Click"/>
-                                <MenuItem Header="Escuro" Click="ThemeDark_Click"/>
-                                <MenuItem Header="Sistema" Click="ThemeSystem_Click"/>
-                            </MenuItem>
                         </ContextMenu>
                     </Button.ContextMenu>
                 </Button>
                 
-                <!-- Tab Control -->
-                <TabControl Grid.Column="1" 
+                <!-- Title -->
+                <TextBlock Grid.Column="1" 
+                           Text="MEU GESTOR DE VODS" 
+                           FontSize="16" 
+                           FontWeight="Bold"
+                           Foreground="#5F6368"
+                           VerticalAlignment="Center"
+                           Margin="10,0,20,0"/>
+                
+                <!-- Chrome Tabs for Extra Modules -->
+                <TabControl Grid.Column="2" 
                             x:Name="ChromeTabControl"
                             Style="{StaticResource ChromeTabControlStyle}"
-                            Margin="4,4,40,0"
+                            Margin="10,4,10,0"
+                            Visibility="Collapsed"
                             shell:WindowChrome.IsHitTestVisibleInChrome="True">
                     <TabControl.Resources>
                         <Style TargetType="TabItem" BasedOn="{StaticResource ChromeTabItemStyle}"/>
                     </TabControl.Resources>
                 </TabControl>
                 
-                <!-- New Tab Button -->
-                <Button Grid.Column="1"
+                <!-- Theme Button -->
+                <Button Grid.Column="3"
+                        x:Name="ThemeButton"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"
-                        Content="+"
-                        Width="28"
-                        Height="28"
-                        Margin="0,6,8,0"
+                        Content="{Binding ThemeButtonText}"
+                        Padding="10,4"
+                        Margin="0,0,10,0"
                         HorizontalAlignment="Right"
                         Background="Transparent"
-                        BorderThickness="0"
-                        FontSize="18"
+                        BorderThickness="1"
+                        BorderBrush="#DADCE0"
                         Foreground="#5F6368"
-                        Click="NewTab_Click"
-                        ToolTip="Nova aba (Ctrl+T)"/>
+                        Click="ThemeButton_Click"
+                        ToolTip="Muda tema: Claro, Escuro ou Sistema">
+                    <Button.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="Tema Claro" Click="ThemeLight_Click"/>
+                            <MenuItem Header="Tema Escuro" Click="ThemeDark_Click"/>
+                            <MenuItem Header="Tema do Sistema" Click="ThemeSystem_Click"/>
+                        </ContextMenu>
+                    </Button.ContextMenu>
+                </Button>
                 
                 <!-- Window Controls -->
-                <Button Grid.Column="2"
+                <Button Grid.Column="4"
                         x:Name="MinimizeWindowButton"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"
                         Content="—"
@@ -181,7 +193,7 @@
                         Click="MinimizeWindow_Click"
                         ToolTip="Minimizar"/>
                 
-                <Button Grid.Column="3"
+                <Button Grid.Column="5"
                         x:Name="MaximizeRestoreWindowButton"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"
                         Content="□"
@@ -194,7 +206,7 @@
                         Click="MaximizeRestoreWindow_Click"
                         ToolTip="Maximizar/Restaurar"/>
                 
-                <Button Grid.Column="4"
+                <Button Grid.Column="6"
                         x:Name="CloseWindowButton"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"
                         Content="×"
@@ -221,18 +233,8 @@
             </Grid>
         </Border>
 
-        <!-- Tab Content Area -->
-        <TabControl Grid.Row="1" 
-                    x:Name="ContentTabControl"
-                    Style="{StaticResource ChromeTabControlStyle}"
-                    BorderThickness="0">
-            <TabControl.Resources>
-                <Style TargetType="TabItem" BasedOn="{StaticResource ChromeTabItemStyle}"/>
-            </TabControl.Resources>
-            
-            <!-- Tab 1: MEU GESTOR DE VODS (Main Content) -->
-            <TabItem Header="MEU GESTOR DE VODS">
-                <Grid Background="{DynamicResource AppBackgroundBrush}">
+        <!-- Main Content Area -->
+        <Grid Grid.Row="1" Background="{DynamicResource AppBackgroundBrush}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
@@ -376,8 +378,8 @@
                         </Grid>
                     </Grid>
 
-        <!-- Main Content -->
-        <Grid Grid.Row="2" Margin="10,5" x:Name="MainContentGrid">
+                    <!-- Main Content -->
+                    <Grid Grid.Row="1" Margin="10,5" x:Name="MainContentGrid">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition x:Name="EntriesColumn" Width="2*"/>
                 <ColumnDefinition x:Name="CenterSpacerColumn" Width="10"/>
@@ -696,7 +698,5 @@
                         </StackPanel>
                     </Border>
                 </Grid>
-            </TabItem>
-        </TabControl>
-    </Grid>
+            </Grid>
 </Window>

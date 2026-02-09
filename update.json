@@ -1,16 +1,14 @@
 {
-  "version": "1.0.35",
-  "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.35/MeuGestorVODs-Setup-v1.0.35.exe",
+  "version": "1.0.36",
+  "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.36/MeuGestorVODs-Setup-v1.0.36.exe",
   "sha256": "",
   "notes": [
-    "Novo: Sistema de abas estilo Chrome",
-    "Novo: Interface com abas para multiplos modulos",
-    "Novo: Botão + para nova aba",
-    "Novo: Botão × para fechar abas",
-    "Novo: Header redesenhado estilo navegador",
-    "LisoFlix: IndexedDB para dados offline",
-    "LisoFlix: Cache local de filmes e series",
-    "LisoFlix: Botão de atualização manual",
-    "Correcoes: Estabilidade e performance"
+    "Correção: Sistema principal fora de abas",
+    "Correção: Espaçamento entre header e conteúdo",
+    "Novo: Título "MEU GESTOR DE VODS" no header",
+    "Novo: Botão de tema restaurado",
+    "Melhoria: Layout mais compacto e organizado",
+    "Sistema de abas: Disponível apenas para módulos extras",
+    "Interface: Header estilo navegador aprimorado"
   ]
 }
