@@ -248,6 +248,44 @@
     100% { transform: rotate(360deg); }
   }
 
+  .update-info {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    color: var(--netflix-light-gray);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .btn-atualizar {
+    background: var(--netflix-red);
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+  }
+
+  .btn-atualizar:hover {
+    background: #ff0a16;
+  }
+
+  .offline-badge {
+    background: var(--netflix-red);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    margin-left: 10px;
+  }
+
   video {
     width: 100%;
     max-height: 50vh;
@@ -333,6 +371,11 @@
   </nav>
 </header>
 
+<div id="update-info" class="update-info" style="display: none;">
+  <span id="last-update">Nunca atualizado</span>
+  <button class="btn-atualizar" onclick="atualizarDados()">Atualizar</button>
+</div>
+
 <div id="player-controls">
   <button onclick="playerPlay()">Play</button>
   <button onclick="playerPause()">Pause</button>
@@ -361,6 +404,134 @@
   let userG = "felipe96452";
   let passG = "8761dias";
   let favoritos = JSON.parse(localStorage.getItem("favoritos") || "[]");
+
+  // IndexedDB Configuration
+  const DB_NAME = 'LisoFlixDB';
+  const DB_VERSION = 1;
+  let db = null;
+
+  // Initialize IndexedDB
+  function initDB() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        db = request.result;
+        resolve(db);
+      };
+      
+      request.onupgradeneeded = (event) => {
+        const database = event.target.result;
+        
+        // Store for movies
+        if (!database.objectStoreNames.contains('filmes')) {
+          const filmesStore = database.createObjectStore('filmes', { keyPath: 'stream_id' });
+          filmesStore.createIndex('category_name', 'category_name', { unique: false });
+          filmesStore.createIndex('name', 'name', { unique: false });
+        }
+        
+        // Store for series
+        if (!database.objectStoreNames.contains('series')) {
+          const seriesStore = database.createObjectStore('series', { keyPath: 'series_id' });
+          seriesStore.createIndex('category_name', 'category_name', { unique: false });
+          seriesStore.createIndex('name', 'name', { unique: false });
+        }
+        
+        // Store for metadata
+        if (!database.objectStoreNames.contains('metadata')) {
+          database.createObjectStore('metadata', { keyPath: 'key' });
+        }
+      };
+    });
+  }
+
+  // Save data to IndexedDB
+  async function saveToDB(storeName, data) {
+    if (!db) await initDB();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([storeName], 'readwrite');
+      const store = transaction.objectStore(storeName);
+      
+      // Clear existing data
+      store.clear();
+      
+      // Add new data
+      data.forEach(item => {
+        store.put(item);
+      });
+      
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+    });
+  }
+
+  // Load data from IndexedDB
+  async function loadFromDB(storeName) {
+    if (!db) await initDB();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([storeName], 'readonly');
+      const store = transaction.objectStore(storeName);
+      const request = store.getAll();
+      
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  // Save metadata
+  async function saveMetadata(key, value) {
+    if (!db) await initDB();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['metadata'], 'readwrite');
+      const store = transaction.objectStore('metadata');
+      store.put({ key, value });
+      
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+    });
+  }
+
+  // Load metadata
+  async function loadMetadata(key) {
+    if (!db) await initDB();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['metadata'], 'readonly');
+      const store = transaction.objectStore('metadata');
+      const request = store.get(key);
+      
+      request.onsuccess = () => resolve(request.result ? request.result.value : null);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  // Update UI with last update info
+  async function updateLastUpdateInfo() {
+    const lastUpdate = await loadMetadata('lastUpdate');
+    const updateInfoDiv = document.getElementById('update-info');
+    const lastUpdateSpan = document.getElementById('last-update');
+    
+    if (lastUpdate) {
+      const date = new Date(lastUpdate);
+      const formatted = date.toLocaleString('pt-BR');
+      lastUpdateSpan.textContent = `Atualizado: ${formatted}`;
+      updateInfoDiv.style.display = 'flex';
+    } else {
+      lastUpdateSpan.textContent = 'Nunca atualizado';
+      updateInfoDiv.style.display = 'flex';
+    }
+  }
+
+  // Force update from API
+  async function atualizarDados() {
+    if (confirm('Isso irá buscar os dados mais recentes da API. Continuar?')) {
+      await renderTelaPrincipal(true);
+    }
+  }
 
   window.addEventListener("scroll", () => {
     if (window.scrollY > 30) {
@@ -531,27 +702,106 @@
     }
   }
 
-  async function renderTelaPrincipal() {
+  async function renderTelaPrincipal(forceUpdate = false) {
     ocultarPlayer();
     resetarAbas();
     homeBtn.classList.add("active");
     conteudoDiv.innerHTML = 
-      `<div style="text-align: center; padding: 50px;"><div class="loading-spinner"></div></div>`;
+      `<div style="text-align: center; padding: 50px;"><div class="loading-spinner"></div><p style="margin-top: 20px; color: var(--netflix-light-gray);">Carregando...</p></div>`;
 
     try {
-      const token = `username=${userG}&password=${passG}`;
-      const filmesPromise = fetch(`${urlG}/player_api.php?${token}&action=get_vod_streams`).then(r => r.json());
-      const seriesPromise = fetch(`${urlG}/player_api.php?${token}&action=get_series`).then(r => r.json());
+      let vods = [];
+      let sers = [];
+      let fromCache = false;
 
-      const [vods, sers] = await Promise.all([filmesPromise, seriesPromise]);
+      // Initialize DB if not already done
+      if (!db) await initDB();
+
+      if (!forceUpdate) {
+        // Try to load from IndexedDB first
+        try {
+          vods = await loadFromDB('filmes');
+          sers = await loadFromDB('series');
+          
+          if (vods.length > 0 || sers.length > 0) {
+            fromCache = true;
+            console.log(`Carregado do cache: ${vods.length} filmes, ${sers.length} séries`);
+          }
+        } catch (dbError) {
+          console.log('Erro ao carregar do cache:', dbError);
+        }
+      }
+
+      // If no data in cache or force update, fetch from API
+      if (!fromCache || forceUpdate) {
+        conteudoDiv.innerHTML = 
+          `<div style="text-align: center; padding: 50px;"><div class="loading-spinner"></div><p style="margin-top: 20px; color: var(--netflix-light-gray);">${forceUpdate ? 'Atualizando dados...' : 'Buscando dados da API...'}</p></div>`;
+
+        const token = `username=${userG}&password=${passG}`;
+        const filmesPromise = fetch(`${urlG}/player_api.php?${token}&action=get_vod_streams`).then(r => r.json());
+        const seriesPromise = fetch(`${urlG}/player_api.php?${token}&action=get_series`).then(r => r.json());
+
+        [vods, sers] = await Promise.all([filmesPromise, seriesPromise]);
+
+        // Save to IndexedDB
+        try {
+          await saveToDB('filmes', vods);
+          await saveToDB('series', sers);
+          await saveMetadata('lastUpdate', new Date().toISOString());
+          console.log('Dados salvos no cache local');
+        } catch (saveError) {
+          console.log('Erro ao salvar no cache:', saveError);
+        }
+      }
 
       streamBase = `${urlG}/movie/${userG}/${passG}/`;
       filmes = organizarPorCategoria(vods);
       series = organizarPorCategoria(sers);
 
-      conteudoDiv.innerHTML = "";
+      // Update UI
+      await updateLastUpdateInfo();
 
-      const heroBanner = document.createElement("div");
+      await renderizarConteudo();
+
+    } catch (e) {
+      console.error("Erro ao carregar dados da API:", e);
+      
+      // Try to load from cache as fallback
+      try {
+        if (!db) await initDB();
+        const vods = await loadFromDB('filmes');
+        const sers = await loadFromDB('series');
+        
+        if (vods.length > 0 || sers.length > 0) {
+          streamBase = `${urlG}/movie/${userG}/${passG}/`;
+          filmes = organizarPorCategoria(vods);
+          series = organizarPorCategoria(sers);
+          
+          await updateLastUpdateInfo();
+          
+          // Show offline warning before rendering
+          const offlineWarning = document.createElement('div');
+          offlineWarning.style.cssText = 'background: rgba(229, 9, 20, 0.8); color: white; padding: 10px; text-align: center; font-size: 0.9rem;';
+          offlineWarning.innerHTML = 'Modo offline - Exibindo dados salvos localmente <span class="offline-badge">OFFLINE</span>';
+          
+          await renderizarConteudo(offlineWarning);
+        } else {
+          throw new Error('Sem dados em cache');
+        }
+      } catch (cacheError) {
+        conteudoDiv.innerHTML = `<p style='color:var(--netflix-red); text-align:center; padding: 50px;'>Erro ao carregar filmes e séries.<br><br>Verifique sua conexão com a internet.<br><br><small>Erro técnico: ${e.message}</small></p>`;
+      }
+    }
+  }
+
+  async function renderizarConteudo(offlineWarning = null) {
+    conteudoDiv.innerHTML = "";
+    
+    if (offlineWarning) {
+      conteudoDiv.appendChild(offlineWarning);
+    }
+
+    const heroBanner = document.createElement("div");
       heroBanner.className = "hero-banner";
       heroBanner.innerHTML = `
         <div class="hero-content">
@@ -667,10 +917,6 @@
         secSeries.appendChild(seriesRow);
         conteudoDiv.appendChild(secSeries);
       }
-
-    } catch (e) {
-      console.error("Erro ao carregar dados da API:", e);
-      conteudoDiv.innerHTML = "<p style=\'color:var(--netflix-red); text-align:center; padding: 50px;\'>Erro ao carregar filmes e séries. Verifique a conexão ou as credenciais da API.</p>";
     }
   }
 

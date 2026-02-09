@@ -16,6 +16,68 @@
         <SolidColorBrush x:Key="BaseTextBrush" Color="#111111"/>
         <SolidColorBrush x:Key="HeaderBackgroundBrush" Color="#007ACC"/>
         <SolidColorBrush x:Key="HeaderForegroundBrush" Color="White"/>
+        <SolidColorBrush x:Key="ChromeTabBackground" Color="#DEE1E6"/>
+        <SolidColorBrush x:Key="ChromeTabActiveBackground" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="ChromeTabHoverBackground" Color="#E8EAED"/>
+        
+        <!-- Chrome-style Tab Style -->
+        <Style x:Key="ChromeTabItemStyle" TargetType="TabItem">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="TabBorder" 
+                                Background="{StaticResource ChromeTabBackground}"
+                                BorderBrush="#DADCE0"
+                                BorderThickness="1"
+                                CornerRadius="8 8 0 0"
+                                Margin="2,0,0,0"
+                                Height="32">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ContentPresenter Grid.Column="0" 
+                                                  ContentSource="Header"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"
+                                                  Margin="12,0,8,0"/>
+                                <Button Grid.Column="1" 
+                                        x:Name="CloseButton"
+                                        Content="×"
+                                        Width="16"
+                                        Height="16"
+                                        Margin="0,0,8,0"
+                                        Padding="0"
+                                        FontSize="14"
+                                        FontWeight="Bold"
+                                        Background="Transparent"
+                                        BorderThickness="0"
+                                        Foreground="#5F6368"
+                                        Click="CloseTab_Click"
+                                        ToolTip="Fechar aba"/>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="{StaticResource ChromeTabActiveBackground}"/>
+                                <Setter TargetName="TabBorder" Property="BorderThickness" Value="1,1,1,0"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="{StaticResource ChromeTabHoverBackground}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        
+        <!-- Chrome Tab Control Style -->
+        <Style x:Key="ChromeTabControlStyle" TargetType="TabControl">
+            <Setter Property="TabStripPlacement" Value="Top"/>
+            <Setter Property="Background" Value="{StaticResource ChromeTabBackground}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
     </Window.Resources>
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome
@@ -28,53 +90,36 @@
     <Grid Background="{DynamicResource AppBackgroundBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Header -->
-        <Border Grid.Row="0" Background="{DynamicResource HeaderBackgroundBrush}" Padding="8,6" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
-            <Grid>
+        <!-- Chrome-style Header with Tabs -->
+        <Border Grid.Row="0" Background="{DynamicResource ChromeTabBackground}" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+            <Grid Height="38">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-
+                
+                <!-- Menu Button -->
                 <Button Grid.Column="0"
                         x:Name="MainMenuButton"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"
-                        Width="44"
-                        Height="34"
-                        Padding="0"
-                        Margin="0,0,10,0"
+                        Width="40"
+                        Height="30"
+                        Margin="8,4,4,4"
                         Click="ThemeButton_Click"
+                        Background="Transparent"
+                        BorderThickness="0"
                         ToolTip="Menu">
-                    <Button.Template>
-                        <ControlTemplate TargetType="Button">
-                            <Border Background="#F3F4F8"
-                                    BorderBrush="#E3E5EE"
-                                    BorderThickness="1"
-                                    CornerRadius="10"
-                                    SnapsToDevicePixels="True">
-                                <Border.Effect>
-                                    <DropShadowEffect Color="#66000000" BlurRadius="10" ShadowDepth="2" Opacity="0.35"/>
-                                </Border.Effect>
-                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-                        </ControlTemplate>
-                    </Button.Template>
-                    <Button.Content>
-                        <Grid Width="20" Height="16">
-                            <Border Height="3" Width="18" CornerRadius="2" Background="#9AA0B8" VerticalAlignment="Top"/>
-                            <Border Height="3" Width="18" CornerRadius="2" Background="#9AA0B8" VerticalAlignment="Center"/>
-                            <Border Height="3" Width="18" CornerRadius="2" Background="#9AA0B8" VerticalAlignment="Bottom"/>
-                        </Grid>
-                    </Button.Content>
+                    <Grid Width="18" Height="14">
+                        <Border Height="2" Width="18" CornerRadius="1" Background="#5F6368" VerticalAlignment="Top"/>
+                        <Border Height="2" Width="18" CornerRadius="1" Background="#5F6368" VerticalAlignment="Center"/>
+                        <Border Height="2" Width="18" CornerRadius="1" Background="#5F6368" VerticalAlignment="Bottom"/>
+                    </Grid>
                     <Button.ContextMenu>
                         <ContextMenu>
                             <MenuItem Header="1 INICIO" Click="MainMenuHome_Click"/>
@@ -83,207 +128,253 @@
                             <MenuItem Header="4 YouTube_para_m3u" Click="MainMenuYouTubeToM3u_Click"/>
                             <MenuItem Header="5 DARK M3U CHECKER" Click="MainMenuDarkM3uChecker_Click"/>
                             <MenuItem Header="6 LisoFlix" Click="MainMenuLisoFlix_Click"/>
+                            <Separator/>
+                            <MenuItem Header="Nova Aba" Click="NewTab_Click"/>
+                            <MenuItem Header="Nova Janela" Click="NewWindow_Click"/>
+                            <Separator/>
+                            <MenuItem Header="Tema">
+                                <MenuItem Header="Claro" Click="ThemeLight_Click"/>
+                                <MenuItem Header="Escuro" Click="ThemeDark_Click"/>
+                                <MenuItem Header="Sistema" Click="ThemeSystem_Click"/>
+                            </MenuItem>
                         </ContextMenu>
                     </Button.ContextMenu>
                 </Button>
-
-                <TextBlock Grid.Column="1"
-                           Text="MEU GESTOR DE VODS"
-                           FontSize="20"
-                           FontWeight="Bold"
-                           Foreground="{DynamicResource HeaderForegroundBrush}"
-                           VerticalAlignment="Center"/>
-
-                <Button Grid.Column="2"
-                        x:Name="ThemeButton"
+                
+                <!-- Tab Control -->
+                <TabControl Grid.Column="1" 
+                            x:Name="ChromeTabControl"
+                            Style="{StaticResource ChromeTabControlStyle}"
+                            Margin="4,4,40,0"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                    <TabControl.Resources>
+                        <Style TargetType="TabItem" BasedOn="{StaticResource ChromeTabItemStyle}"/>
+                    </TabControl.Resources>
+                </TabControl>
+                
+                <!-- New Tab Button -->
+                <Button Grid.Column="1"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"
-                        Content="{Binding ThemeButtonText}"
-                        Padding="10,4"
-                        Margin="10,0,0,0"
-                        Click="ThemeButton_Click"
-                        ToolTip="Muda tema: Claro, Escuro ou Sistema">
-                    <Button.ContextMenu>
-                        <ContextMenu>
-                            <MenuItem Header="Tema Claro" Click="ThemeLight_Click"/>
-                            <MenuItem Header="Tema Escuro" Click="ThemeDark_Click"/>
-                            <MenuItem Header="Tema do Sistema" Click="ThemeSystem_Click"/>
-                        </ContextMenu>
-                    </Button.ContextMenu>
-                </Button>
-
-                <Button Grid.Column="3"
+                        Content="+"
+                        Width="28"
+                        Height="28"
+                        Margin="0,6,8,0"
+                        HorizontalAlignment="Right"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        FontSize="18"
+                        Foreground="#5F6368"
+                        Click="NewTab_Click"
+                        ToolTip="Nova aba (Ctrl+T)"/>
+                
+                <!-- Window Controls -->
+                <Button Grid.Column="2"
                         x:Name="MinimizeWindowButton"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"
                         Content="—"
-                        Width="34"
-                        Height="28"
-                        Margin="8,0,0,0"
-                        VerticalAlignment="Center"
+                        Width="45"
+                        Height="38"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        FontSize="14"
+                        Foreground="#5F6368"
                         Click="MinimizeWindow_Click"
-                        ToolTip="Minimizar janela"/>
-
-                <Button Grid.Column="4"
+                        ToolTip="Minimizar"/>
+                
+                <Button Grid.Column="3"
                         x:Name="MaximizeRestoreWindowButton"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"
-                        Content="▢"
-                        Width="34"
-                        Height="28"
-                        Margin="4,0,0,0"
-                        VerticalAlignment="Center"
+                        Content="□"
+                        Width="45"
+                        Height="38"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        FontSize="14"
+                        Foreground="#5F6368"
                         Click="MaximizeRestoreWindow_Click"
-                        ToolTip="Maximizar / Restaurar"/>
-
-                <Button Grid.Column="5"
+                        ToolTip="Maximizar/Restaurar"/>
+                
+                <Button Grid.Column="4"
                         x:Name="CloseWindowButton"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True"
-                        Content="✕"
-                        Width="34"
-                        Height="28"
-                        Margin="4,0,0,0"
-                        VerticalAlignment="Center"
+                        Content="×"
+                        Width="45"
+                        Height="38"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Foreground="#5F6368"
                         Click="CloseWindow_Click"
-                        Background="#D32F2F"
-                        Foreground="White"
-                        ToolTip="Fechar aplicação"/>
+                        ToolTip="Fechar">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Style.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#E81123"/>
+                                    <Setter Property="Foreground" Value="White"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
             </Grid>
         </Border>
 
-        <!-- Config Panel -->
-        <Grid Grid.Row="1" Background="{DynamicResource PanelBackgroundBrush}" TextElement.Foreground="{DynamicResource BaseTextBrush}" Margin="10" Grid.IsSharedSizeScope="True">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+        <!-- Tab Content Area -->
+        <TabControl Grid.Row="1" 
+                    x:Name="ContentTabControl"
+                    Style="{StaticResource ChromeTabControlStyle}"
+                    BorderThickness="0">
+            <TabControl.Resources>
+                <Style TargetType="TabItem" BasedOn="{StaticResource ChromeTabItemStyle}"/>
+            </TabControl.Resources>
+            
+            <!-- Tab 1: MEU GESTOR DE VODS (Main Content) -->
+            <TabItem Header="MEU GESTOR DE VODS">
+                <Grid Background="{DynamicResource AppBackgroundBrush}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <!-- Config Panel -->
+                    <Grid Grid.Row="0" Background="{DynamicResource PanelBackgroundBrush}" TextElement.Foreground="{DynamicResource BaseTextBrush}" Margin="10" Grid.IsSharedSizeScope="True">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
 
-            <!-- M3U URL -->
-            <Grid Grid.Row="0" Margin="0,0,0,5">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="Label"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock Text="URL M3u ou M3u8:" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold"/>
-                <Button Grid.Column="1" Content="Carregar" Click="LoadM3U_Click" Padding="15,5" Margin="0,0,5,0" Background="#4CAF50" Foreground="White" FontWeight="Bold" ToolTip="Carrega e processa a playlist da URL informada"/>
-                <ComboBox Grid.Column="2" x:Name="M3UUrlComboBox" IsEditable="True" Text="{Binding M3UUrl, UpdateSourceTrigger=PropertyChanged}" Padding="5"/>
-                <Button Grid.Column="3" Content="Histórico" Click="ShowUrlHistory_Click" Padding="12,5" Margin="5,0,0,0" Background="#2196F3" Foreground="White" ToolTip="Mostra o histórico de URLs M3U testadas"/>
-                <Button Grid.Column="4" Content="Limpar Offline" Click="ClearOfflineUrls_Click" Padding="12,5" Margin="5,0,0,0" Background="#F44336" Foreground="White" ToolTip="Configura ou executa a limpeza/verificação de links offline"/>
-                <Button Grid.Column="5" Content="Analisar Link" Click="AnalyzeLinks_Click" Padding="12,5" Margin="5,0,0,0" Background="#3F51B5" Foreground="White" FontWeight="SemiBold" ToolTip="Executa o IPTV Checker (ONLINE/OFFLINE, duplicados e score)"/>
-            </Grid>
+                        <!-- M3U URL -->
+                        <Grid Grid.Row="0" Margin="0,0,0,5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="Label"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="URL M3u ou M3u8:" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold"/>
+                            <Button Grid.Column="1" Content="Carregar" Click="LoadM3U_Click" Padding="15,5" Margin="0,0,5,0" Background="#4CAF50" Foreground="White" FontWeight="Bold" ToolTip="Carrega e processa a playlist da URL informada"/>
+                            <ComboBox Grid.Column="2" x:Name="M3UUrlComboBox" IsEditable="True" Text="{Binding M3UUrl, UpdateSourceTrigger=PropertyChanged}" Padding="5"/>
+                            <Button Grid.Column="3" Content="Histórico" Click="ShowUrlHistory_Click" Padding="12,5" Margin="5,0,0,0" Background="#2196F3" Foreground="White" ToolTip="Mostra o histórico de URLs M3U testadas"/>
+                            <Button Grid.Column="4" Content="Limpar Offline" Click="ClearOfflineUrls_Click" Padding="12,5" Margin="5,0,0,0" Background="#F44336" Foreground="White" ToolTip="Configura ou executa a limpeza/verificação de links offline"/>
+                            <Button Grid.Column="5" Content="Analisar Link" Click="AnalyzeLinks_Click" Padding="12,5" Margin="5,0,0,0" Background="#3F51B5" Foreground="White" FontWeight="SemiBold" ToolTip="Executa o IPTV Checker (ONLINE/OFFLINE, duplicados e score)"/>
+                        </Grid>
 
-            <!-- Download Path -->
-            <Grid Grid.Row="1" Margin="0,0,0,5">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="Label"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock Text="Pasta Download:" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold"/>
-                <TextBox Grid.Column="1" Text="{Binding DownloadPath}" Padding="5" IsReadOnly="True"/>
-                <Button Grid.Column="2" Content="Alterar" Click="BrowsePath_Click" Padding="15,5" Margin="10,0,0,0" ToolTip="Escolhe a pasta base de downloads e banco local"/>
-            </Grid>
+                        <!-- Download Path -->
+                        <Grid Grid.Row="1" Margin="0,0,0,5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="Label"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Pasta Download:" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold"/>
+                            <TextBox Grid.Column="1" Text="{Binding DownloadPath}" Padding="5" IsReadOnly="True"/>
+                            <Button Grid.Column="2" Content="Alterar" Click="BrowsePath_Click" Padding="15,5" Margin="10,0,0,0" ToolTip="Escolhe a pasta base de downloads e banco local"/>
+                        </Grid>
 
-            <!-- Local File -->
-            <Grid Grid.Row="2" Margin="0,0,0,5">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="Label"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock Text="Arquivo Local:" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold"/>
-                <Button Grid.Column="1" Content="Procurar" Click="BrowseLocalFile_Click" Padding="12,5" Margin="0,0,5,0" Background="#FF9800" Foreground="White" ToolTip="Seleciona uma playlist local no computador"/>
-                <Border Grid.Column="2"
-                        Background="#FAFAFA"
-                        BorderBrush="#BDBDBD"
-                        BorderThickness="1"
-                        CornerRadius="2"
-                        AllowDrop="True"
-                        DragEnter="LocalFileDropZone_DragEnter"
-                        DragOver="LocalFileDropZone_DragOver"
-                        DragLeave="LocalFileDropZone_DragLeave"
-                        Drop="LocalFileDropZone_Drop">
-                    <Border.Style>
-                        <Style TargetType="Border">
-                            <Setter Property="Background" Value="#FAFAFA"/>
-                            <Setter Property="BorderBrush" Value="#BDBDBD"/>
-                            <Setter Property="BorderThickness" Value="1"/>
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsLocalFileDragOver}" Value="True">
-                                    <Setter Property="Background" Value="#E3F2FD"/>
-                                    <Setter Property="BorderBrush" Value="#1E88E5"/>
-                                    <Setter Property="BorderThickness" Value="2"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Border.Style>
-                    <Grid>
-                        <ComboBox x:Name="LocalFileComboBox"
-                                  Text="{Binding LocalFilePath, UpdateSourceTrigger=PropertyChanged}"
-                                  ItemsSource="{Binding LocalFileHistory}"
-                                  IsEditable="True"
-                                  IsReadOnly="True"
-                                  StaysOpenOnEdit="True"
-                                  DropDownOpened="LocalFileComboBox_DropDownOpened"
-                                  SelectionChanged="LocalFileComboBox_SelectionChanged"
-                                  Padding="4"
-                                  BorderThickness="0"
-                                  Background="Transparent"
-                                  AllowDrop="True"
-                                  DragEnter="LocalFileDropZone_DragEnter"
-                                  DragOver="LocalFileDropZone_DragOver"
-                                  DragLeave="LocalFileDropZone_DragLeave"
-                                  Drop="LocalFileDropZone_Drop"/>
-                        <TextBlock Text="Arraste e solte sua lista aqui..."
-                                   Margin="8,0,0,0"
-                                   VerticalAlignment="Center"
-                                   Foreground="#5f6368"
-                                   FontStyle="Italic"
-                                   FontWeight="SemiBold"
-                                   IsHitTestVisible="False"
-                                   Visibility="{Binding LocalFilePath, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}"/>
+                        <!-- Local File -->
+                        <Grid Grid.Row="2" Margin="0,0,0,5">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="Label"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Arquivo Local:" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold"/>
+                            <Button Grid.Column="1" Content="Procurar" Click="BrowseLocalFile_Click" Padding="12,5" Margin="0,0,5,0" Background="#FF9800" Foreground="White" ToolTip="Seleciona uma playlist local no computador"/>
+                            <Border Grid.Column="2"
+                                    Background="#FAFAFA"
+                                    BorderBrush="#BDBDBD"
+                                    BorderThickness="1"
+                                    CornerRadius="2"
+                                    AllowDrop="True"
+                                    DragEnter="LocalFileDropZone_DragEnter"
+                                    DragOver="LocalFileDropZone_DragOver"
+                                    DragLeave="LocalFileDropZone_DragLeave"
+                                    Drop="LocalFileDropZone_Drop">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="#FAFAFA"/>
+                                        <Setter Property="BorderBrush" Value="#BDBDBD"/>
+                                        <Setter Property="BorderThickness" Value="1"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsLocalFileDragOver}" Value="True">
+                                                <Setter Property="Background" Value="#E3F2FD"/>
+                                                <Setter Property="BorderBrush" Value="#1E88E5"/>
+                                                <Setter Property="BorderThickness" Value="2"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <Grid>
+                                    <ComboBox x:Name="LocalFileComboBox"
+                                              Text="{Binding LocalFilePath, UpdateSourceTrigger=PropertyChanged}"
+                                              ItemsSource="{Binding LocalFileHistory}"
+                                              IsEditable="True"
+                                              IsReadOnly="True"
+                                              StaysOpenOnEdit="True"
+                                              DropDownOpened="LocalFileComboBox_DropDownOpened"
+                                              SelectionChanged="LocalFileComboBox_SelectionChanged"
+                                              Padding="4"
+                                              BorderThickness="0"
+                                              Background="Transparent"
+                                              AllowDrop="True"
+                                              DragEnter="LocalFileDropZone_DragEnter"
+                                              DragOver="LocalFileDropZone_DragOver"
+                                              DragLeave="LocalFileDropZone_DragLeave"
+                                              Drop="LocalFileDropZone_Drop"/>
+                                    <TextBlock Text="Arraste e solte sua lista aqui..."
+                                               Margin="8,0,0,0"
+                                               VerticalAlignment="Center"
+                                               Foreground="#5f6368"
+                                               FontStyle="Italic"
+                                               FontWeight="SemiBold"
+                                               IsHitTestVisible="False"
+                                               Visibility="{Binding LocalFilePath, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}"/>
+                                </Grid>
+                            </Border>
+                            <Button Grid.Column="3" Content="Analisar lista local" Click="LoadLocalFile_Click" Padding="15,5" Margin="5,0,0,0" Background="#4CAF50" Foreground="White" FontWeight="Bold" ToolTip="Lê e processa a playlist local selecionada"/>
+                        </Grid>
+
+                        <!-- Filter -->
+                        <Grid Grid.Row="3">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="Label"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Filtrar:" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold"/>
+                            <TextBox Grid.Column="1" Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}" Padding="5"/>
+                            <TextBlock Grid.Column="2" Text="Resultado:" VerticalAlignment="Center" Margin="10,0,6,0" FontWeight="SemiBold"/>
+                            <ComboBox Grid.Column="3" Width="140" ItemsSource="{Binding AnalysisFilterOptions}" SelectedItem="{Binding SelectedAnalysisFilter}" Padding="4"/>
+                        </Grid>
+
+                        <!-- IPTV Checker Progress -->
+                        <Grid Grid.Row="4" Margin="0,6,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" SharedSizeGroup="Label"/>
+                                <ColumnDefinition Width="220"/>
+                                <ColumnDefinition Width="220"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Checker:" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold"/>
+                            <ProgressBar Grid.Column="1" Height="16" Value="{Binding AnalysisProgressValue}" Maximum="100" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="2" Text="{Binding AnalysisProgressText}" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="#333"/>
+                            <TextBlock Grid.Column="3" Text="{Binding AnalysisSummaryText}" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="#333" TextTrimming="CharacterEllipsis"/>
+                            <Button Grid.Column="4" Content="Remover Duplicados" Click="RemoveDuplicates_Click" Padding="10,4" Margin="8,0,0,0" ToolTip="Remove da lista atual os links marcados como duplicados"/>
+                            <Button Grid.Column="5" Content="Exportar Resultado" Click="ExportAnalysis_Click" Padding="10,4" Margin="8,0,0,0" Background="#009688" Foreground="White" ToolTip="Exporta playlist filtrada (ONLINE, sem duplicados ou limpa)"/>
+                        </Grid>
                     </Grid>
-                </Border>
-                <Button Grid.Column="3" Content="Analisar lista local" Click="LoadLocalFile_Click" Padding="15,5" Margin="5,0,0,0" Background="#4CAF50" Foreground="White" FontWeight="Bold" ToolTip="Lê e processa a playlist local selecionada"/>
-            </Grid>
-
-            <!-- Filter -->
-            <Grid Grid.Row="3">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="Label"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock Text="Filtrar:" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold"/>
-                <TextBox Grid.Column="1" Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}" Padding="5"/>
-                <TextBlock Grid.Column="2" Text="Resultado:" VerticalAlignment="Center" Margin="10,0,6,0" FontWeight="SemiBold"/>
-                <ComboBox Grid.Column="3" Width="140" ItemsSource="{Binding AnalysisFilterOptions}" SelectedItem="{Binding SelectedAnalysisFilter}" Padding="4"/>
-            </Grid>
-
-            <!-- IPTV Checker Progress -->
-            <Grid Grid.Row="4" Margin="0,6,0,0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="Label"/>
-                    <ColumnDefinition Width="220"/>
-                    <ColumnDefinition Width="220"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock Text="Checker:" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="SemiBold"/>
-                <ProgressBar Grid.Column="1" Height="16" Value="{Binding AnalysisProgressValue}" Maximum="100" VerticalAlignment="Center"/>
-                <TextBlock Grid.Column="2" Text="{Binding AnalysisProgressText}" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="#333"/>
-                <TextBlock Grid.Column="3" Text="{Binding AnalysisSummaryText}" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="#333" TextTrimming="CharacterEllipsis"/>
-                <Button Grid.Column="4" Content="Remover Duplicados" Click="RemoveDuplicates_Click" Padding="10,4" Margin="8,0,0,0" ToolTip="Remove da lista atual os links marcados como duplicados"/>
-                <Button Grid.Column="5" Content="Exportar Resultado" Click="ExportAnalysis_Click" Padding="10,4" Margin="8,0,0,0" Background="#009688" Foreground="White" ToolTip="Exporta playlist filtrada (ONLINE, sem duplicados ou limpa)"/>
-            </Grid>
-        </Grid>
 
         <!-- Main Content -->
         <Grid Grid.Row="2" Margin="10,5" x:Name="MainContentGrid">
@@ -573,9 +664,9 @@
                 </Grid>
             </Border>
         </Grid>
-
-        <!-- Status Bar -->
-        <Border Grid.Row="3" Background="{DynamicResource StatusBackgroundBrush}" TextElement.Foreground="{DynamicResource BaseTextBrush}" Padding="5,8" HorizontalAlignment="Stretch" VerticalAlignment="Bottom">
+                    
+                    <!-- Status Bar -->
+                    <Border Grid.Row="2" Background="{DynamicResource StatusBackgroundBrush}" TextElement.Foreground="{DynamicResource BaseTextBrush}" Padding="5,8" HorizontalAlignment="Stretch" VerticalAlignment="Bottom">
             <Grid VerticalAlignment="Center">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -598,11 +689,14 @@
             </Grid>
         </Border>
 
-        <!-- Loading Overlay -->
-        <Border Grid.Row="0" Grid.RowSpan="4" Background="#80000000" Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                <TextBlock Text="Carregando..." Foreground="White" FontSize="16"/>
-            </StackPanel>
-        </Border>
+                    <!-- Loading Overlay -->
+                    <Border Grid.Row="0" Grid.RowSpan="3" Background="#80000000" Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock Text="Carregando..." Foreground="White" FontSize="16"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </TabItem>
+        </TabControl>
     </Grid>
 </Window>

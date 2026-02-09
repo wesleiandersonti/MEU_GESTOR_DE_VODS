@@ -1055,6 +1055,65 @@ namespace MeuGestorVODs
             StatusMessage = "Inicio carregado.";
         }
 
+        #region Chrome Tabs System
+        
+        private void NewTab_Click(object sender, RoutedEventArgs e)
+        {
+            var newTab = new TabItem 
+            { 
+                Header = $"Aba {ChromeTabControl.Items.Count + 1}",
+                Content = new System.Windows.Controls.TextBlock 
+                { 
+                    Text = "Nova aba criada. Selecione um módulo no menu.", 
+                    HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
+                    VerticalAlignment = System.Windows.VerticalAlignment.Center,
+                    FontSize = 14,
+                    Foreground = new SolidColorBrush(Colors.Gray)
+                }
+            };
+            ChromeTabControl.Items.Add(newTab);
+            ChromeTabControl.SelectedItem = newTab;
+            StatusMessage = "Nova aba criada.";
+        }
+
+        private void CloseTab_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.Button btn)
+            {
+                // Find the parent TabItem
+                var tabItem = FindParent<TabItem>(btn);
+                if (tabItem != null && ChromeTabControl.Items.Count > 1)
+                {
+                    ChromeTabControl.Items.Remove(tabItem);
+                    StatusMessage = "Aba fechada.";
+                }
+                else if (ChromeTabControl.Items.Count == 1)
+                {
+                    System.Windows.MessageBox.Show("Não é possível fechar a última aba.", "Aviso", 
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+            }
+        }
+
+        private void NewWindow_Click(object sender, RoutedEventArgs e)
+        {
+            var newWindow = new MainWindow();
+            newWindow.Show();
+            StatusMessage = "Nova janela aberta.";
+        }
+
+        private T FindParent<T>(DependencyObject child) where T : DependencyObject
+        {
+            DependencyObject parent = VisualTreeHelper.GetParent(child);
+            while (parent != null && !(parent is T))
+            {
+                parent = VisualTreeHelper.GetParent(parent);
+            }
+            return parent as T;
+        }
+
+        #endregion
+
         private void MainMenuConnectXuiOne_Click(object sender, RoutedEventArgs e)
         {
             var saved = LoadXuiOneConnectionConfig();
@@ -2332,20 +2391,6 @@ namespace MeuGestorVODs
                 {
                     return candidate;
                 }
-            }
-
-            return null;
-        }
-
-        private static T? FindParent<T>(DependencyObject? child) where T : DependencyObject
-        {
-            while (child != null)
-            {
-                if (child is T typed)
-                {
-                    return typed;
-                }
-                child = VisualTreeHelper.GetParent(child);
             }
 
             return null;
