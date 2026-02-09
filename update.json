@@ -1,11 +1,11 @@
 {
-  "version": "1.0.27",
-  "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.27/MeuGestorVODs-Setup-v1.0.27.exe",
+  "version": "1.0.28",
+  "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.28/MeuGestorVODs-Setup-v1.0.28.exe",
   "sha256": "",
   "notes": [
-    "Cabecalho ajustado: menu de tres tracos antes do titulo",
-    "Tema do sistema voltou ao formato anterior (botao Tema: Sistema)",
-    "Separacao entre menu principal e menu de tema",
-    "Ajustes visuais no topo para novos recursos"
+    "Historico persistente para Arquivo Local com limpeza automatica de caminhos removidos",
+    "Novos modulos no menu principal: YouTube_para_m3u, DARK M3U CHECKER e LisoFlix",
+    "Conector XUI-ONE com teste de conexao MariaDB e salvamento seguro",
+    "Ajustes gerais de navegacao e produtividade"
   ]
 }
