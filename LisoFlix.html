@@ -87,6 +87,22 @@
     border-bottom: 3px solid var(--netflix-red);
   }
 
+  nav button#tab-continue {
+    background: linear-gradient(135deg, #e50914 0%, #b20710 100%);
+    color: white;
+    font-weight: bold;
+    border-radius: 4px;
+    padding: 8px 16px;
+    margin-left: 10px;
+    transition: all 0.3s ease;
+  }
+
+  nav button#tab-continue:hover {
+    background: linear-gradient(135deg, #ff0a16 0%, #d40812 100%);
+    transform: scale(1.05);
+    box-shadow: 0 4px 15px rgba(229, 9, 20, 0.4);
+  }
+
   .hero-banner {
     position: relative;
     height: 60vh;
@@ -383,6 +399,7 @@
     <button id="tab-filmes">Filmes</button>
     <button id="tab-series">Séries</button>
     <button id="tab-favoritos">Favoritos</button>
+    <button id="tab-continue" onclick="openContinueWatchingModal()" style="background: #e50914; color: white; font-weight: bold;">📺 Continuar</button>
   </nav>
 </header>
 
@@ -423,11 +440,14 @@
 
   // IndexedDB Configuration
   const DB_NAME = 'LisoFlixDB';
-  const DB_VERSION = 2; // Incrementado para adicionar store de links M3U8
+  const DB_VERSION = 3; // Incrementado para adicionar store de cache de vídeo
   let db = null;
   
   // Configuração de links M3U8 personalizados (apenas usuário pode configurar)
   let customM3U8Links = [];
+  
+  // Cache de posição de vídeos
+  let videoCache = {};
 
   // Initialize IndexedDB
   function initDB() {
@@ -477,6 +497,25 @@
           historyStore.createIndex('contentUrl', 'contentUrl', { unique: false });
           historyStore.createIndex('timestamp', 'timestamp', { unique: false });
           historyStore.createIndex('source', 'source', { unique: false }); // 'custom' ou 'api'
+        }
+        
+        // Store for video progress cache (saves position for resume)
+        if (!database.objectStoreNames.contains('videoProgress')) {
+          const progressStore = database.createObjectStore('videoProgress', { keyPath: 'videoUrl' });
+          progressStore.createIndex('contentName', 'contentName', { unique: false });
+          progressStore.createIndex('lastPosition', 'lastPosition', { unique: false });
+          progressStore.createIndex('duration', 'duration', { unique: false });
+          progressStore.createIndex('lastUpdated', 'lastUpdated', { unique: false });
+          progressStore.createIndex('percentage', 'percentage', { unique: false });
+        }
+        
+        // Store for offline video cache metadata
+        if (!database.objectStoreNames.contains('offlineCache')) {
+          const offlineStore = database.createObjectStore('offlineCache', { keyPath: 'videoUrl' });
+          offlineStore.createIndex('contentName', 'contentName', { unique: false });
+          offlineStore.createIndex('cachedSegments', 'cachedSegments', { unique: false });
+          offlineStore.createIndex('cacheSize', 'cacheSize', { unique: false });
+          offlineStore.createIndex('lastAccessed', 'lastAccessed', { unique: false });
         }
       };
     });
@@ -939,17 +978,64 @@
   function exibirPlayer(link, item = null, source = 'api') {
     const player = document.getElementById("player");
     const controls = document.getElementById("player-controls");
-    player.src = link;
-    player.style.display = "block";
-    controls.style.display = "flex";
-    player.play();
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    if (item) registrarUltimo(item);
-    
-    // Salvar no histórico de reprodução (banco de dados IndexedDB)
     const contentName = item ? item.name : 'Conteúdo desconhecido';
-    savePlaybackHistory(contentName, link, source).catch(err => {
-      console.log('Erro ao salvar histórico:', err);
+    
+    // Setup auto-save for this video
+    setupVideoAutoSave(player, link, contentName);
+    
+    // Load saved progress
+    loadVideoProgress(link).then(progress => {
+      if (progress && progress.lastPosition > 10) { // Only resume if watched more than 10 seconds
+        const resume = confirm(
+          `Você parou de assistir "${contentName}" em ${formatTime(progress.lastPosition)}.\n\n` +
+          `Deseja continuar de onde parou?`
+        );
+        
+        if (resume) {
+          player.src = link;
+          player.style.display = "block";
+          controls.style.display = "flex";
+          
+          // Set time after metadata is loaded
+          player.addEventListener('loadedmetadata', function onLoaded() {
+            player.currentTime = progress.lastPosition;
+            player.removeEventListener('loadedmetadata', onLoaded);
+            player.play();
+            console.log(`Retomando vídeo em: ${formatTime(progress.lastPosition)}`);
+          });
+          
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          if (item) registrarUltimo(item);
+          
+          // Save to playback history
+          savePlaybackHistory(contentName, link, source).catch(err => {
+            console.log('Erro ao salvar histórico:', err);
+          });
+          return;
+        }
+      }
+      
+      // Normal play (no saved position or user chose not to resume)
+      player.src = link;
+      player.style.display = "block";
+      controls.style.display = "flex";
+      player.play();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      if (item) registrarUltimo(item);
+      
+      // Save to playback history
+      savePlaybackHistory(contentName, link, source).catch(err => {
+        console.log('Erro ao salvar histórico:', err);
+      });
+    }).catch(err => {
+      console.log('Erro ao carregar progresso:', err);
+      // Fallback to normal play
+      player.src = link;
+      player.style.display = "block";
+      controls.style.display = "flex";
+      player.play();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      if (item) registrarUltimo(item);
     });
   }
 
@@ -961,6 +1047,307 @@
     player.load();
     player.style.display = "none";
     controls.style.display = "none";
+  }
+
+  // ============================================
+  // VIDEO PROGRESS CACHE SYSTEM
+  // ============================================
+  
+  // Save video progress to IndexedDB
+  async function saveVideoProgress(videoUrl, contentName, currentTime, duration) {
+    if (!db) await initDB();
+    if (!videoUrl || currentTime < 5) return; // Don't save if less than 5 seconds
+    
+    const percentage = duration > 0 ? (currentTime / duration) * 100 : 0;
+    
+    // Don't save if video is finished (95%+ watched)
+    if (percentage >= 95) {
+      await deleteVideoProgress(videoUrl);
+      return;
+    }
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['videoProgress'], 'readwrite');
+      const store = transaction.objectStore('videoProgress');
+      
+      const progress = {
+        videoUrl: videoUrl,
+        contentName: contentName,
+        lastPosition: currentTime,
+        duration: duration,
+        percentage: percentage,
+        lastUpdated: new Date().toISOString()
+      };
+      
+      const request = store.put(progress);
+      
+      request.onsuccess = () => {
+        console.log(`Progresso salvo: ${contentName} - ${formatTime(currentTime)} (${percentage.toFixed(1)}%)`);
+        resolve();
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+  
+  // Load video progress from IndexedDB
+  async function loadVideoProgress(videoUrl) {
+    if (!db) await initDB();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['videoProgress'], 'readonly');
+      const store = transaction.objectStore('videoProgress');
+      const request = store.get(videoUrl);
+      
+      request.onsuccess = () => {
+        resolve(request.result || null);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+  
+  // Delete video progress
+  async function deleteVideoProgress(videoUrl) {
+    if (!db) await initDB();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['videoProgress'], 'readwrite');
+      const store = transaction.objectStore('videoProgress');
+      const request = store.delete(videoUrl);
+      
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+  
+  // Get all videos with saved progress
+  async function getAllSavedProgress() {
+    if (!db) await initDB();
+    
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['videoProgress'], 'readonly');
+      const store = transaction.objectStore('videoProgress');
+      const index = store.index('lastUpdated');
+      const request = index.openCursor(null, 'prev');
+      
+      const results = [];
+      request.onsuccess = (event) => {
+        const cursor = event.target.result;
+        if (cursor) {
+          results.push(cursor.value);
+          cursor.continue();
+        } else {
+          resolve(results);
+        }
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+  
+  // Setup video event listeners for auto-save
+  function setupVideoAutoSave(player, videoUrl, contentName) {
+    let saveInterval;
+    let lastSavedTime = 0;
+    
+    // Save every 5 seconds while playing
+    player.addEventListener('play', () => {
+      saveInterval = setInterval(() => {
+        if (player.currentTime > lastSavedTime + 5) {
+          saveVideoProgress(videoUrl, contentName, player.currentTime, player.duration);
+          lastSavedTime = player.currentTime;
+        }
+      }, 5000);
+    });
+    
+    // Save immediately when paused
+    player.addEventListener('pause', () => {
+      clearInterval(saveInterval);
+      saveVideoProgress(videoUrl, contentName, player.currentTime, player.duration);
+    });
+    
+    // Save when video ends
+    player.addEventListener('ended', () => {
+      clearInterval(saveInterval);
+      deleteVideoProgress(videoUrl);
+    });
+    
+    // Save before page unload
+    window.addEventListener('beforeunload', () => {
+      saveVideoProgress(videoUrl, contentName, player.currentTime, player.duration);
+    });
+  }
+  
+  // Format time helper
+  function formatTime(seconds) {
+    if (!seconds || seconds < 0) return '00:00';
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    
+    if (hrs > 0) {
+      return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+  
+  // Show continue watching banner
+  async function showContinueWatching() {
+    const savedVideos = await getAllSavedProgress();
+    if (savedVideos.length === 0) return;
+    
+    // Filter videos with meaningful progress (more than 1% and less than 95%)
+    const inProgress = savedVideos.filter(v => v.percentage > 1 && v.percentage < 95);
+    if (inProgress.length === 0) return;
+    
+    // Create banner
+    const banner = document.createElement('div');
+    banner.id = 'continue-watching-banner';
+    banner.style.cssText = `
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+      border-left: 4px solid #e50914;
+      padding: 15px 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+      z-index: 1000;
+      max-width: 350px;
+      font-family: "Netflix Sans", "Helvetica Neue", Arial, sans-serif;
+    `;
+    
+    const latestVideo = inProgress[0];
+    const remaining = latestVideo.duration - latestVideo.lastPosition;
+    
+    banner.innerHTML = `
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+        <h4 style="margin: 0; color: #e50914; font-size: 14px;">▶️ Continuar Assistindo</h4>
+        <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; color: #999; cursor: pointer; font-size: 18px;">×</button>
+      </div>
+      <div style="color: #fff; font-size: 14px; margin-bottom: 8px; font-weight: bold;">${latestVideo.contentName}</div>
+      <div style="color: #aaa; font-size: 12px; margin-bottom: 10px;">
+        Parado em ${formatTime(latestVideo.lastPosition)} 
+        <span style="color: #666;">(${latestVideo.percentage.toFixed(0)}%)</span>
+      </div>
+      <button onclick="resumeVideo('${latestVideo.videoUrl}', '${latestVideo.contentName.replace(/'/g, "\\'")}')" 
+              style="background: #e50914; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; width: 100%; font-weight: bold;">
+        ▶️ Continuar
+      </button>
+    `;
+    
+    document.body.appendChild(banner);
+    
+    // Auto-hide after 10 seconds
+    setTimeout(() => {
+      if (banner.parentElement) {
+        banner.style.opacity = '0';
+        banner.style.transition = 'opacity 0.5s';
+        setTimeout(() => banner.remove(), 500);
+      }
+    }, 10000);
+  }
+  
+  // Resume video from saved position
+  async function resumeVideo(videoUrl, contentName) {
+    const progress = await loadVideoProgress(videoUrl);
+    
+    // Remove banner
+    const banner = document.getElementById('continue-watching-banner');
+    if (banner) banner.remove();
+    
+    // Open player
+    exibirPlayer(videoUrl, { name: contentName }, 'api');
+    
+    // Restore position after video loads
+    if (progress && progress.lastPosition > 0) {
+      const player = document.getElementById('player');
+      player.addEventListener('loadedmetadata', function onLoaded() {
+        player.currentTime = progress.lastPosition;
+        player.removeEventListener('loadedmetadata', onLoaded);
+        console.log(`Vídeo retomado em: ${formatTime(progress.lastPosition)}`);
+      });
+    }
+  }
+
+  // Open modal with all videos in progress
+  async function openContinueWatchingModal() {
+    const savedVideos = await getAllSavedProgress();
+    const inProgress = savedVideos.filter(v => v.percentage > 1 && v.percentage < 95);
+    
+    if (inProgress.length === 0) {
+      alert('Nenhum vídeo em progresso encontrado.');
+      return;
+    }
+    
+    const modal = document.createElement('div');
+    modal.id = 'continue-modal';
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.9);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: "Netflix Sans", "Helvetica Neue", Arial, sans-serif;
+    `;
+    
+    const content = document.createElement('div');
+    content.style.cssText = `
+      background: #1a1a1a;
+      width: 90%;
+      max-width: 600px;
+      max-height: 80vh;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+    `;
+    
+    let videosHtml = inProgress.map(video => `
+      <div style="background: #2a2a2a; padding: 15px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #e50914;">
+        <div style="flex: 1;">
+          <div style="font-weight: bold; color: #fff; margin-bottom: 5px; font-size: 14px;">${video.contentName}</div>
+          <div style="font-size: 12px; color: #888;">
+            <span style="color: #e50914;">▶ ${formatTime(video.lastPosition)}</span> 
+            de ${formatTime(video.duration)} 
+            <span style="color: #666;">(${video.percentage.toFixed(0)}%)</span>
+          </div>
+          <div style="font-size: 11px; color: #666; margin-top: 3px;">
+            Última vez: ${new Date(video.lastUpdated).toLocaleString('pt-BR')}
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px; margin-left: 15px;">
+          <button onclick="resumeVideo('${video.videoUrl}', '${video.contentName.replace(/'/g, "\\'")}'); document.getElementById('continue-modal').remove();" 
+                  style="padding: 8px 15px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">
+            ▶ Continuar
+          </button>
+          <button onclick="deleteVideoProgress('${video.videoUrl}'); this.parentElement.parentElement.remove();" 
+                  style="padding: 8px 15px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+            🗑️
+          </button>
+        </div>
+      </div>
+    `).join('');
+    
+    content.innerHTML = `
+      <div style="background: #e50914; padding: 20px; display: flex; justify-content: space-between; align-items: center;">
+        <h2 style="margin: 0; color: white; font-size: 1.5em;">📺 Continuar Assistindo</h2>
+        <button onclick="document.getElementById('continue-modal').remove()" style="background: transparent; border: none; color: white; font-size: 24px; cursor: pointer;">×</button>
+      </div>
+      <div style="padding: 20px; max-height: calc(80vh - 80px); overflow-y: auto;">
+        <p style="color: #888; margin-bottom: 15px; font-size: 13px;">
+          ${inProgress.length} vídeo(s) em progresso encontrado(s).
+        </p>
+        <div style="display: flex; flex-direction: column;">
+          ${videosHtml}
+        </div>
+      </div>
+    `;
+    
+    modal.appendChild(content);
+    document.body.appendChild(modal);
   }
 
   function organizarPorCategoria(lista) {
@@ -1318,6 +1705,11 @@
   favoritosBtn.addEventListener("click", abrirFavoritos);
 
   renderTelaPrincipal();
+  
+  // Show continue watching banner after a short delay
+  setTimeout(() => {
+    showContinueWatching();
+  }, 3000);
 </script>
 
 </body>
