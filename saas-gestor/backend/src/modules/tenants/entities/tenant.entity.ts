@@ -33,7 +33,7 @@ export class Tenant {
   @Column({ type: 'varchar', length: 255 })
   name: string;
 
-  @Column({ type: 'varchar', length: 100, unique: true })
+  @Column({ type: 'varchar', length: 100 })
   slug: string;
 
   @Column({
