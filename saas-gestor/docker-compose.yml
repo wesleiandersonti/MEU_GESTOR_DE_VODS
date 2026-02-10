@@ -89,6 +89,8 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MYSQL_DATABASE: saas_gestor
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_APP_PASSWORD}
     volumes:
       - mariadb-slave-data:/var/lib/mysql
     ports:
