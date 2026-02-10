@@ -25,5 +25,12 @@
       "@database/*": ["src/database/*"],
       "@auth/*": ["src/auth/*"]
     }
-  }
+  },
+  "include": [
+    "src/main.ts",
+    "src/app.module.ts",
+    "src/app.controller.ts",
+    "src/app.service.ts"
+  ],
+  "exclude": ["node_modules", "dist", "test", "**/*.spec.ts"]
 }
