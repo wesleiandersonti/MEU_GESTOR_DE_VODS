@@ -78,6 +78,40 @@
             <Setter Property="Background" Value="{StaticResource ChromeTabBackground}"/>
             <Setter Property="BorderThickness" Value="0"/>
         </Style>
+        
+        <!-- Chrome Tab Item Style Fixed (sem botão de fechar) -->
+        <Style x:Key="ChromeTabItemStyleFixed" TargetType="TabItem">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="TabBorder" 
+                                Background="{StaticResource ChromeTabBackground}"
+                                BorderBrush="#DADCE0"
+                                BorderThickness="1"
+                                CornerRadius="8 8 0 0"
+                                Margin="2,0,0,0"
+                                Height="32">
+                            <Grid>
+                                <ContentPresenter 
+                                    ContentSource="Header"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center"
+                                    Margin="12,0,12,0"/>
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="{StaticResource ChromeTabActiveBackground}"/>
+                                <Setter TargetName="TabBorder" Property="BorderThickness" Value="1,1,1,0"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="{StaticResource ChromeTabHoverBackground}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome
@@ -233,8 +267,8 @@
                 <Style TargetType="TabItem" BasedOn="{StaticResource ChromeTabItemStyle}"/>
             </TabControl.Resources>
             
-            <!-- Tab 1: Main Application Content -->
-            <TabItem Header="MEU GESTOR DE VODS">
+            <!-- Tab 1: Main Application Content (FIXA - sem botão de fechar) -->
+            <TabItem Header="MEU GESTOR DE VODS" Style="{StaticResource ChromeTabItemStyleFixed}">
                 <Grid Background="{DynamicResource AppBackgroundBrush}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -269,7 +303,6 @@
                             <Button Grid.Column="3" Content="Histórico" Click="ShowUrlHistory_Click" Padding="12,5" Margin="5,0,0,0" Background="#2196F3" Foreground="White" ToolTip="Mostra o histórico de URLs M3U testadas"/>
                             <Button Grid.Column="4" Content="Limpar Offline" Click="ClearOfflineUrls_Click" Padding="12,5" Margin="5,0,0,0" Background="#F44336" Foreground="White" ToolTip="Configura ou executa a limpeza/verificação de links offline"/>
                             <Button Grid.Column="5" Content="Analisar Link" Click="AnalyzeLinks_Click" Padding="12,5" Margin="5,0,0,0" Background="#3F51B5" Foreground="White" FontWeight="SemiBold" ToolTip="Executa o IPTV Checker (ONLINE/OFFLINE, duplicados e score)"/>
-                            <Button Grid.Column="6" Content="📺 Cast" Click="CastToDevice_Click" Padding="12,5" Margin="5,0,0,0" Background="#9C27B0" Foreground="White" FontWeight="SemiBold" ToolTip="Reproduz em dispositivos na mesma rede (TV, Chromecast, etc.)"/>
                         </Grid>
 
                         <!-- Download Path -->
