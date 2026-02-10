@@ -1,0 +1,137 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # Backend API (NestJS)
+  # ==========================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: saas-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_MASTER_HOST: mariadb-master
+      DB_MASTER_PORT: 3306
+      DB_SLAVE_HOST: mariadb-slave
+      DB_SLAVE_PORT: 3306
+      DB_USER: saas_app
+      DB_PASSWORD: ${DB_APP_PASSWORD}
+      DB_NAME: saas_gestor
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_EXPIRATION: 1h
+      JWT_REFRESH_EXPIRATION: 7d
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mariadb-master
+      - mariadb-slave
+      - redis
+    networks:
+      - saas-network
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  # ==========================================
+  # Frontend (React)
+  # ==========================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: saas-frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: http://localhost:3000/api/v1
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - saas-network
+
+  # ==========================================
+  # MariaDB Master
+  # ==========================================
+  mariadb-master:
+    image: mariadb:10.6
+    container_name: saas-mariadb-master
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: saas_gestor
+      MYSQL_USER: saas_app
+      MYSQL_PASSWORD: ${DB_APP_PASSWORD}
+    volumes:
+      - mariadb-master-data:/var/lib/mysql
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "3306:3306"
+    networks:
+      - saas-network
+    command: >
+      --server-id=1
+      --log-bin=mysql-bin
+      --binlog-format=ROW
+      --binlog-row-image=FULL
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+
+  # ==========================================
+  # MariaDB Slave
+  # ==========================================
+  mariadb-slave:
+    image: mariadb:10.6
+    container_name: saas-mariadb-slave
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: saas_gestor
+    volumes:
+      - mariadb-slave-data:/var/lib/mysql
+    ports:
+      - "3307:3306"
+    networks:
+      - saas-network
+    depends_on:
+      - mariadb-master
+    command: >
+      --server-id=2
+      --relay-log=mysql-relay-bin
+      --read-only=1
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+
+  # ==========================================
+  # Redis
+  # ==========================================
+  redis:
+    image: redis:7-alpine
+    container_name: saas-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --appendonly yes
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - saas-network
+
+networks:
+  saas-network:
+    driver: bridge
+
+volumes:
+  mariadb-master-data:
+  mariadb-slave-data:
+  redis-data:
