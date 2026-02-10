@@ -77,7 +77,7 @@ namespace MeuGestorVODs
         private const string LiveLinksDatabaseFileName = "banco_canais_ao_vivo.txt";
         private const string LocalFileHistoryFileName = "local_file_history.json";
         private const string XuiOneConnectionFileName = "xui_one_connection.json";
-        private const string LisoFlixHtmlFileName = "LisoFlix.html";
+        private const string LisoFlixHtmlFileName = "LisoFlix - Copia.html";
         private const string DarkBulletHtmlFileName = "DARK BULLET COM PLAYER INTEGRADO.HTML";
         private static readonly HashSet<string> LiveCategoryNames = new(StringComparer.OrdinalIgnoreCase)
         {
