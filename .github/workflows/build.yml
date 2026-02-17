@@ -41,6 +41,36 @@ jobs:
             "APP_NUM_VERSION=1.0.0" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           }
 
+      - name: Validate Update Manifests
+        shell: pwsh
+        run: |
+          if (!(Test-Path "app/update.json")) { throw "app/update.json nao encontrado" }
+          if (!(Test-Path "update.json")) { throw "update.json da raiz nao encontrado" }
+
+          $appManifest = Get-Content "app/update.json" -Raw | ConvertFrom-Json
+          $rootManifest = Get-Content "update.json" -Raw | ConvertFrom-Json
+
+          if ($appManifest.version -ne $rootManifest.version) {
+            throw "Versao divergente entre app/update.json ($($appManifest.version)) e update.json ($($rootManifest.version))"
+          }
+
+          if ($appManifest.installerUrl -ne $rootManifest.installerUrl) {
+            throw "installerUrl divergente entre app/update.json e update.json"
+          }
+
+          if ("${{ github.ref }}".StartsWith("refs/tags/")) {
+            $expectedTag = "v$($env:APP_NUM_VERSION)"
+            $expectedInstaller = "MeuGestorVODs-Setup-v$($env:APP_NUM_VERSION).exe"
+
+            if ($appManifest.version -ne $env:APP_NUM_VERSION) {
+              throw "Manifesto com versao $($appManifest.version), esperado $($env:APP_NUM_VERSION)"
+            }
+
+            if (-not $appManifest.installerUrl.Contains("/download/$expectedTag/$expectedInstaller")) {
+              throw "installerUrl nao aponta para o asset esperado da tag $expectedTag"
+            }
+          }
+
       - name: Publish
         run: dotnet publish app/MeuGestorVODs.csproj -c Release -r win-x64 --self-contained -p:Version=${{ env.APP_NUM_VERSION }} -p:FileVersion=${{ env.APP_NUM_VERSION }} -p:AssemblyVersion=${{ env.APP_NUM_VERSION }} -o app/output
 

@@ -1225,6 +1225,11 @@ namespace MeuGestorVODs
                 return;
             }
 
+            if (!ValidatePlaylistFinderExecutable(executablePath, showMessageBox: true))
+            {
+                return;
+            }
+
             await OpenEmbeddedExecutableTabAsync("playlistfinder.app", executablePath);
             StatusMessage = "playlistfinder.app aberto dentro do sistema.";
         }
@@ -1232,10 +1237,27 @@ namespace MeuGestorVODs
         private void MainMenuIpPortPlaylistFinder_Click(object sender, RoutedEventArgs e)
         {
             var executablePath = ResolvePlaylistFinderExecutablePath();
-            if (!TryOpenLocalPath(executablePath, "IP E PORTA", "playlistfinder.app.exe nao foi encontrado no pacote integrado do aplicativo."))
+            if (string.IsNullOrWhiteSpace(executablePath) || !File.Exists(executablePath))
+            {
+                var rootPath = ResolveIpPortRootDirectory() ?? "(nao localizado)";
+                System.Windows.MessageBox.Show(
+                    "playlistfinder.app.exe nao foi encontrado no pacote integrado do aplicativo.\n\nBase procurada:\n" + rootPath,
+                    "IP E PORTA",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
+            if (!ValidatePlaylistFinderExecutable(executablePath, showMessageBox: true))
             {
                 return;
             }
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = executablePath,
+                UseShellExecute = true
+            });
 
             StatusMessage = "playlistfinder.app aberto com sucesso.";
         }
@@ -1372,6 +1394,45 @@ namespace MeuGestorVODs
             });
 
             return true;
+        }
+
+        private bool ValidatePlaylistFinderExecutable(string executablePath, bool showMessageBox)
+        {
+            try
+            {
+                var hash = ComputeFileSha256(executablePath);
+                if (string.Equals(hash, PlaylistFinderExecutableSha256, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                DiagnosticsLogger.Warn("IPEPORTA", $"Integridade do playlistfinder divergente. Calculado={hash}");
+                if (showMessageBox)
+                {
+                    System.Windows.MessageBox.Show(
+                        "Falha na validacao de integridade do playlistfinder.app.\n\n" +
+                        "O executavel local nao confere com a assinatura esperada do pacote oficial.",
+                        "IP E PORTA",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                }
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                DiagnosticsLogger.Error("IPEPORTA", "Erro ao validar integridade do playlistfinder.", ex);
+                if (showMessageBox)
+                {
+                    System.Windows.MessageBox.Show(
+                        "Nao foi possivel validar a integridade do playlistfinder.app.",
+                        "IP E PORTA",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                }
+
+                return false;
+            }
         }
 
         private void MainMenuYouTubeToM3u_Click(object sender, RoutedEventArgs e)

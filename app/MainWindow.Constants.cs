@@ -52,5 +52,16 @@ namespace MeuGestorVODs
         private const int StreamCheckLogRetentionDays = 14;
         private const int ServerScoreRetentionDays = 30;
         private const int MaxStreamCheckLogRows = 250000;
+        private const bool RequireUpdateSha256 = false;
+        private const bool RequireSignedInstaller = false;
+        private const string ExpectedInstallerPublisher = "";
+        private const string PlaylistFinderExecutableSha256 = "5e5185d9cba76e81e1c68adb9d4ba328f722c4989cd2c1aa2371b6e947eedc3b";
+        private static readonly HashSet<string> TrustedUpdateHosts = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "github.com",
+            "objects.githubusercontent.com",
+            "raw.githubusercontent.com",
+            "wesleiandersonti.github.io"
+        };
     }
 }

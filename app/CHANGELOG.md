@@ -30,6 +30,24 @@ e este projeto adere a [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.0.56] - 2026-02-17
+
+### 🔐 Seguranca (Hardening)
+- **Atualizacao automatica com controles de confianca**
+  - URLs de instalador/update agora passam por validacao de host confiavel antes de uso.
+  - Updater preparado para modo estrito com SHA256 e assinatura digital (flags de politica).
+
+### 🛡️ Integridade de Modulos
+- **playlistfinder.app validado por hash**
+  - Execucao do modulo `IP E PORTA` agora valida SHA256 do `playlistfinder.app.exe` integrado antes de abrir.
+
+### ⚙️ Pipeline (CI)
+- **Validacao de manifests no GitHub Actions**
+  - Build agora valida consistencia entre `app/update.json` e `update.json`.
+  - Em release por tag, pipeline valida se a URL do instalador corresponde ao asset esperado da versao.
+
+---
+
 ## [1.0.55] - 2026-02-17
 
 ### 🛠️ Técnico (Arquitetura)

@@ -1,11 +1,12 @@
 {
-  "version": "1.0.55",
-  "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.55/MeuGestorVODs-Setup-v1.0.55.exe",
+  "version": "1.0.56",
+  "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.56/MeuGestorVODs-Setup-v1.0.56.exe",
   "sha256": "",
   "notes": [
-    "Refatoracao: fluxo do IPTV Checker extraido para CheckerOrchestrator sem quebrar o menu atual",
-    "Melhoria: consolidacao de contadores/logs/score em um resultado unico de analise",
-    "Melhoria: politica de retencao automatica para StreamCheckLog e ServerScoreSnapshot",
-    "Melhoria: base preparada para testes e evolucao incremental da camada de aplicacao"
+    "Seguranca: validacao de host confiavel para URLs de update e instalador",
+    "Seguranca: verificacao de integridade SHA256 do playlistfinder.app integrado",
+    "Hardening: updater preparado para modo estrito (SHA256 e assinatura digital opcionais)",
+    "CI: validacao automatica de consistencia entre app/update.json e update.json",
+    "Melhoria: pipeline valida installerUrl esperado para releases por tag"
   ]
 }

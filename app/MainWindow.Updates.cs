@@ -7,6 +7,7 @@ using System.Net;
 using System.Net.Http;
 using System.Reflection;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
@@ -60,6 +61,17 @@ namespace MeuGestorVODs
                     {
                         DiagnosticsLogger.Warn("Updater", $"[{correlationId}] Manifesto encontrado, mas instalador indisponivel: {manifest.InstallerUrl}");
                         StatusMessage = "Manifesto encontrado, mas instalador indisponivel. Tentando fallback por release...";
+
+                        if (RequireUpdateSha256)
+                        {
+                            System.Windows.MessageBox.Show(
+                                "Manifesto encontrado, mas instalador indisponivel.\n\n" +
+                                "No modo de seguranca estrito, a atualizacao por release sem SHA256 e bloqueada.",
+                                "Atualizacao",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Information);
+                            return;
+                        }
                     }
                     else
                     {
@@ -84,6 +96,18 @@ namespace MeuGestorVODs
                         await InstallManifestAsync(manifest, "Atualizacao");
                         return;
                     }
+                }
+
+                if (RequireUpdateSha256)
+                {
+                    System.Windows.MessageBox.Show(
+                        "Nao foi encontrado manifesto valido com SHA256 para atualizar no modo de seguranca estrito.",
+                        "Atualizacao",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                    StatusMessage = "Atualizacao bloqueada por politica de integridade (SHA256 obrigatorio)";
+                    DiagnosticsLogger.Warn("Updater", $"[{correlationId}] Bloqueado: manifesto ausente/invalido em modo estrito.");
+                    return;
                 }
 
                 var latest = await GetLatestInstallableReleaseAsync();
@@ -191,6 +215,12 @@ namespace MeuGestorVODs
                         StatusMessage = $"Nova versao disponivel: {manifest.Version}";
                         return;
                     }
+                }
+
+                if (RequireUpdateSha256)
+                {
+                    IsUpdateAvailable = false;
+                    return;
                 }
 
                 var latest = await GetLatestInstallableReleaseAsync();
@@ -312,6 +342,17 @@ namespace MeuGestorVODs
                 throw new InvalidOperationException("Nao foi encontrado instalador .exe na release selecionada.");
             }
 
+            if (!Uri.TryCreate(installer.BrowserDownloadUrl, UriKind.Absolute, out var installerUri) ||
+                !IsTrustedHost(installerUri))
+            {
+                throw new InvalidOperationException("URL do instalador da release nao e confiavel.");
+            }
+
+            if (RequireUpdateSha256)
+            {
+                throw new InvalidOperationException("Atualizacao por release exige SHA256 em manifesto no modo de seguranca estrito.");
+            }
+
             var downloadPath = Path.Combine(Path.GetTempPath(), "MeuGestorVODs", installer.Name);
             Directory.CreateDirectory(Path.GetDirectoryName(downloadPath)!);
 
@@ -323,6 +364,8 @@ namespace MeuGestorVODs
             StatusMessage = $"{operation}: baixando {release.TagName}...";
             DiagnosticsLogger.Info("Updater", $"Download de release iniciado: {release.TagName} => {installer.Name}");
             await DownloadFileWithProgressAsync(installer.BrowserDownloadUrl, downloadPath);
+
+            EnsureInstallerSignatureIfRequired(downloadPath);
 
             StatusMessage = $"{operation}: abrindo instalador...";
             Process.Start(new ProcessStartInfo
@@ -347,6 +390,11 @@ namespace MeuGestorVODs
                 throw new InvalidOperationException("Manifesto de atualizacao sem URL valida de instalador.");
             }
 
+            if (!IsTrustedHost(installerUri))
+            {
+                throw new InvalidOperationException("Manifesto de atualizacao aponta para host nao confiavel.");
+            }
+
             if (!await IsInstallerUrlAvailableAsync(manifest.InstallerUrl))
             {
                 throw new InvalidOperationException("Instalador informado no manifesto nao esta disponivel para download.");
@@ -365,7 +413,14 @@ namespace MeuGestorVODs
             DiagnosticsLogger.Info("Updater", $"Download via manifesto iniciado: {manifest.Version} => {fileName}");
             await DownloadFileWithProgressAsync(manifest.InstallerUrl, downloadPath);
 
-            if (!string.IsNullOrWhiteSpace(manifest.Sha256))
+            if (string.IsNullOrWhiteSpace(manifest.Sha256))
+            {
+                if (RequireUpdateSha256)
+                {
+                    throw new InvalidOperationException("Manifesto sem SHA256 em modo de seguranca estrito.");
+                }
+            }
+            else
             {
                 var calculated = ComputeFileSha256(downloadPath);
                 if (!string.Equals(calculated, NormalizeHex(manifest.Sha256), StringComparison.OrdinalIgnoreCase))
@@ -373,6 +428,8 @@ namespace MeuGestorVODs
                     throw new InvalidOperationException("Falha na validacao de integridade (SHA256 divergente).");
                 }
             }
+
+            EnsureInstallerSignatureIfRequired(downloadPath);
 
             StatusMessage = $"{operation}: abrindo instalador...";
             Process.Start(new ProcessStartInfo
@@ -419,6 +476,18 @@ namespace MeuGestorVODs
                         !installerUri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
                         continue;
 
+                    if (!IsTrustedHost(installerUri))
+                    {
+                        DiagnosticsLogger.Warn("Updater", $"Manifesto ignorado por host nao confiavel: {installerUri.Host}");
+                        continue;
+                    }
+
+                    if (RequireUpdateSha256 && string.IsNullOrWhiteSpace(manifest.Sha256))
+                    {
+                        DiagnosticsLogger.Warn("Updater", $"Manifesto ignorado por SHA256 ausente em modo estrito. Version={manifest.Version}");
+                        continue;
+                    }
+
                     return manifest;
                 }
                 catch (Exception ex)
@@ -440,6 +509,12 @@ namespace MeuGestorVODs
             if (!installerUri.Scheme.Equals(Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) &&
                 !installerUri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
             {
+                return false;
+            }
+
+            if (!IsTrustedHost(installerUri))
+            {
+                DiagnosticsLogger.Warn("Updater", $"URL de instalador bloqueada por host nao confiavel: {installerUri.Host}");
                 return false;
             }
 
@@ -529,6 +604,65 @@ namespace MeuGestorVODs
         private static string NormalizeHex(string value)
         {
             return value.Replace(" ", string.Empty).Replace("-", string.Empty).Trim();
+        }
+
+        private static bool IsTrustedHost(Uri uri)
+        {
+            var host = uri.Host?.Trim();
+            if (string.IsNullOrWhiteSpace(host))
+            {
+                return false;
+            }
+
+            if (TrustedUpdateHosts.Contains(host))
+            {
+                return true;
+            }
+
+            return TrustedUpdateHosts.Any(allowed => host.EndsWith("." + allowed, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static void EnsureInstallerSignatureIfRequired(string installerPath)
+        {
+            if (!RequireSignedInstaller)
+            {
+                return;
+            }
+
+            if (!TryValidateInstallerSignature(installerPath, out var reason))
+            {
+                throw new InvalidOperationException($"Falha na validacao de assinatura digital do instalador: {reason}");
+            }
+        }
+
+        private static bool TryValidateInstallerSignature(string installerPath, out string reason)
+        {
+            try
+            {
+                var cert = X509Certificate.CreateFromSignedFile(installerPath);
+                var cert2 = new X509Certificate2(cert);
+
+                if (cert2.NotAfter < DateTime.UtcNow)
+                {
+                    reason = "certificado expirado";
+                    return false;
+                }
+
+                if (!string.IsNullOrWhiteSpace(ExpectedInstallerPublisher) &&
+                    cert2.Subject.IndexOf(ExpectedInstallerPublisher, StringComparison.OrdinalIgnoreCase) < 0)
+                {
+                    reason = $"publisher inesperado: {cert2.Subject}";
+                    return false;
+                }
+
+                reason = "ok";
+                return true;
+            }
+            catch (Exception ex)
+            {
+                reason = ex.Message;
+                return false;
+            }
         }
 
         private async Task<GitHubRelease?> GetLatestReleaseAsync()
