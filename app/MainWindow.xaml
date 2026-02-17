@@ -4,7 +4,6 @@
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:local="clr-namespace:MeuGestorVODs"
         Title="{Binding WindowTitle}" Height="700" Width="1100"
-        Icon="assets/icons/app_icon_window.png"
         WindowStyle="None"
         ResizeMode="CanResize"
         WindowStartupLocation="CenterScreen">

@@ -30,6 +30,18 @@ e este projeto adere a [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.0.48] - 2026-02-17
+
+### 🐛 Corrigido (Fix)
+- **Falha na abertura do app**
+  - Removido o icone definido diretamente no XAML da janela principal, eliminando falha de inicializacao em algumas maquinas.
+
+### 🔄 Melhorado (UX/UI)
+- **Icone icon_256 preservado**
+  - Mantido no executavel e no instalador para identidade visual.
+
+---
+
 ## [1.0.47] - 2026-02-17
 
 ### 🔄 Melhorado (UX/UI)

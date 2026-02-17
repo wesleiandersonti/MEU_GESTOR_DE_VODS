@@ -1,11 +1,10 @@
 {
-  "version": "1.0.47",
-  "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.47/MeuGestorVODs-Setup-v1.0.47.exe",
+  "version": "1.0.48",
+  "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.48/MeuGestorVODs-Setup-v1.0.48.exe",
   "sha256": "",
   "notes": [
-    "Correcao: Janela principal volta a abrir com icone de janela em PNG",
-    "Melhoria: Icone icon_256 aplicado no executavel e instalador",
-    "Melhoria: Assets de icone passam a ser copiados no build/publish",
-    "Correcao: Ajustes para instalacao limpa (do zero)"
+    "Correcao: Removido icone em XAML da janela para evitar falha de inicializacao",
+    "Melhoria: Icone icon_256 mantido no executavel e instalador",
+    "Correcao: Inicializacao estabilizada para instalacao limpa"
   ]
 }
