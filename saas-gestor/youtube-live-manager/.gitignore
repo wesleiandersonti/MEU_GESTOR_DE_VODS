@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.env
+*.log
+output/*.m3u
+!output/active_channels.m3u

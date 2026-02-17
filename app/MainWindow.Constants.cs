@@ -35,6 +35,7 @@ namespace MeuGestorVODs
         private const string LiveLinksDatabaseFileName = "banco_canais_ao_vivo.txt";
         private const string LocalFileHistoryFileName = "local_file_history.json";
         private const string XuiOneConnectionFileName = "xui_one_connection.json";
+        private const string YouTubeLiveApiConnectionFileName = "youtube_live_api_connection.json";
         private const string LisoFlixHtmlFileName = "LisoFlix - Copia.html";
         private const string DarkBulletHtmlFileName = "DARK BULLET COM PLAYER INTEGRADO.HTML";
         private const string DrmPlayerHtmlFileName = "drm-player/index.html";
@@ -49,6 +50,7 @@ namespace MeuGestorVODs
         private const string RepoApiBase = "https://api.github.com/repos/wesleiandersonti/MEU_GESTOR_DE_VODS";
         private const string UpdateManifestPrimaryUrl = "https://raw.githubusercontent.com/wesleiandersonti/MEU_GESTOR_DE_VODS/main/app/update.json";
         private const string UpdateManifestFallbackUrl = "https://wesleiandersonti.github.io/MEU_GESTOR_DE_VODS/update.json";
+        private const string YouTubeLiveApiDefaultBaseUrl = "http://127.0.0.1:8085";
         private const int StreamCheckLogRetentionDays = 14;
         private const int ServerScoreRetentionDays = 30;
         private const int MaxStreamCheckLogRows = 250000;

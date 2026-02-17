@@ -1437,19 +1437,22 @@ namespace MeuGestorVODs
 
         private void MainMenuYouTubeToM3u_Click(object sender, RoutedEventArgs e)
         {
+            var savedApiConfig = LoadYouTubeLiveApiConfig();
+
             var window = new System.Windows.Window
             {
                 Title = "YouTube para M3U",
                 Width = 700,
-                Height = 520,
+                Height = 560,
                 MinWidth = 640,
-                MinHeight = 460,
+                MinHeight = 500,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 Owner = this,
                 Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(246, 248, 252))
             };
 
             var root = new Grid { Margin = new Thickness(14) };
+            root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
@@ -1512,6 +1515,52 @@ namespace MeuGestorVODs
             Grid.SetColumn(outputRow, 1);
             root.Children.Add(outputRow);
 
+            var apiLabel = new TextBlock
+            {
+                Text = "API 24/7:",
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(0, 0, 8, 6),
+                FontWeight = FontWeights.SemiBold
+            };
+            Grid.SetRow(apiLabel, 3);
+            root.Children.Add(apiLabel);
+
+            var apiRow = new Grid { Margin = new Thickness(0, 0, 0, 6) };
+            apiRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            apiRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            apiRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(170) });
+
+            var apiBaseUrlBox = new System.Windows.Controls.TextBox
+            {
+                Text = string.IsNullOrWhiteSpace(savedApiConfig.BaseUrl) ? YouTubeLiveApiDefaultBaseUrl : savedApiConfig.BaseUrl,
+                Height = 28,
+                ToolTip = "Exemplo: http://127.0.0.1:8085"
+            };
+            apiRow.Children.Add(apiBaseUrlBox);
+
+            var apiKeyLabel = new TextBlock
+            {
+                Text = "X-API-Key:",
+                VerticalAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(8, 0, 8, 0),
+                FontWeight = FontWeights.SemiBold
+            };
+            Grid.SetColumn(apiKeyLabel, 1);
+            apiRow.Children.Add(apiKeyLabel);
+
+            var apiKeyBox = new System.Windows.Controls.PasswordBox
+            {
+                Height = 28,
+                ToolTip = "API key do YouTube Live Manager"
+            };
+            apiKeyBox.Password = savedApiConfig.ApiKey ?? string.Empty;
+            Grid.SetColumn(apiKeyBox, 2);
+            apiRow.Children.Add(apiKeyBox);
+
+            Grid.SetRow(apiRow, 3);
+            Grid.SetColumn(apiRow, 1);
+            root.Children.Add(apiRow);
+
             var urlsLabel = new TextBlock
             {
                 Text = "Links YouTube:",
@@ -1519,7 +1568,7 @@ namespace MeuGestorVODs
                 Margin = new Thickness(0, 2, 8, 6),
                 FontWeight = FontWeights.SemiBold
             };
-            Grid.SetRow(urlsLabel, 3);
+            Grid.SetRow(urlsLabel, 4);
             root.Children.Add(urlsLabel);
 
             var urlsBox = new System.Windows.Controls.TextBox
@@ -1530,7 +1579,7 @@ namespace MeuGestorVODs
                 HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
                 MinHeight = 220
             };
-            Grid.SetRow(urlsBox, 4);
+            Grid.SetRow(urlsBox, 5);
             Grid.SetColumn(urlsBox, 1);
             root.Children.Add(urlsBox);
 
@@ -1541,7 +1590,7 @@ namespace MeuGestorVODs
                 Margin = new Thickness(0, 8, 0, 10),
                 TextWrapping = TextWrapping.Wrap
             };
-            Grid.SetRow(info, 5);
+            Grid.SetRow(info, 6);
             Grid.SetColumnSpan(info, 2);
             root.Children.Add(info);
 
@@ -1551,13 +1600,91 @@ namespace MeuGestorVODs
                 HorizontalAlignment = System.Windows.HorizontalAlignment.Right
             };
 
+            var generateApiButton = new System.Windows.Controls.Button { Content = "Gerar via API 24/7", Width = 170, Margin = new Thickness(0, 0, 8, 0) };
             var generateButton = new System.Windows.Controls.Button { Content = "Gerar M3U", Width = 110, Margin = new Thickness(0, 0, 8, 0) };
             var closeButton = new System.Windows.Controls.Button { Content = "Fechar", Width = 90 };
+            actions.Children.Add(generateApiButton);
             actions.Children.Add(generateButton);
             actions.Children.Add(closeButton);
-            Grid.SetRow(actions, 6);
+            Grid.SetRow(actions, 7);
             Grid.SetColumnSpan(actions, 2);
             root.Children.Add(actions);
+
+            generateApiButton.Click += async (_, _) =>
+            {
+                var outputPath = outputPathBox.Text.Trim();
+                var apiBaseUrl = apiBaseUrlBox.Text.Trim();
+                var apiKey = apiKeyBox.Password.Trim();
+
+                if (string.IsNullOrWhiteSpace(outputPath))
+                {
+                    System.Windows.MessageBox.Show("Informe o arquivo de saida.", "YouTube para M3U", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                if (!Uri.TryCreate(apiBaseUrl, UriKind.Absolute, out _))
+                {
+                    System.Windows.MessageBox.Show("Informe uma API Base URL valida.", "YouTube para M3U", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                generateApiButton.IsEnabled = false;
+                generateButton.IsEnabled = false;
+                closeButton.IsEnabled = false;
+
+                try
+                {
+                    var exportResult = await GenerateYouTubeM3uFromApiAsync(apiBaseUrl, apiKey);
+
+                    var outputDir = Path.GetDirectoryName(outputPath);
+                    if (!string.IsNullOrWhiteSpace(outputDir) && !Directory.Exists(outputDir))
+                    {
+                        Directory.CreateDirectory(outputDir);
+                    }
+
+                    File.WriteAllText(outputPath, exportResult.Content);
+
+                    SaveYouTubeLiveApiConfig(new YouTubeLiveApiConfig
+                    {
+                        BaseUrl = apiBaseUrl,
+                        ApiKey = apiKey,
+                        ApiKeyProtected = ProtectSecret(apiKey)
+                    });
+
+                    var channelsText = exportResult.ChannelsCount > 0 ? exportResult.ChannelsCount.ToString() : "N/D";
+                    StatusMessage = $"M3U YouTube API gerado com canais ativos: {channelsText}.";
+
+                    var openNow = System.Windows.MessageBox.Show(
+                        $"Arquivo criado com sucesso via API 24/7.\n\nCanais ativos exportados: {channelsText}\n\nAbrir no Bloco de Notas agora?",
+                        "YouTube para M3U",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Information);
+
+                    if (openNow == MessageBoxResult.Yes)
+                    {
+                        Process.Start(new ProcessStartInfo
+                        {
+                            FileName = "notepad.exe",
+                            Arguments = $"\"{outputPath}\"",
+                            UseShellExecute = true
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Windows.MessageBox.Show(
+                        $"Falha ao gerar M3U pela API: {ex.Message}",
+                        "YouTube para M3U",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                }
+                finally
+                {
+                    generateApiButton.IsEnabled = true;
+                    generateButton.IsEnabled = true;
+                    closeButton.IsEnabled = true;
+                }
+            };
 
             generateButton.Click += (_, _) =>
             {
