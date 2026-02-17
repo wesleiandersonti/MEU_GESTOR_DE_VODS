@@ -122,7 +122,7 @@
             GlassFrameThickness="0"
             UseAeroCaptionButtons="False"/>
     </shell:WindowChrome.WindowChrome>
-    <Grid Background="{DynamicResource AppBackgroundBrush}">
+    <Grid x:Name="RootLayoutGrid" Background="{DynamicResource AppBackgroundBrush}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -166,6 +166,7 @@
                             <MenuItem Header="5 DARK M3U CHECKER" Click="MainMenuDarkM3uChecker_Click"/>
                             <MenuItem Header="6 LisoFlix" Click="MainMenuLisoFlix_Click"/>
                             <MenuItem Header="7 drm-player" Click="MainMenuDrmPlayer_Click"/>
+                            <MenuItem Header="8 bot-iptv" Click="MainMenuBotIptv_Click"/>
                             <Separator/>
                             <MenuItem Header="Nova Janela" Click="NewWindow_Click"/>
                         </ContextMenu>
@@ -301,7 +302,7 @@
                             <ComboBox Grid.Column="2" x:Name="M3UUrlComboBox" IsEditable="True" Text="{Binding M3UUrl, UpdateSourceTrigger=PropertyChanged}" Padding="5"/>
                             <Button Grid.Column="3" Content="Histórico" Click="ShowUrlHistory_Click" Padding="12,5" Margin="5,0,0,0" Background="#2196F3" Foreground="White" ToolTip="Mostra o histórico de URLs M3U testadas"/>
                             <Button Grid.Column="4" Content="Limpar Offline" Click="ClearOfflineUrls_Click" Padding="12,5" Margin="5,0,0,0" Background="#F44336" Foreground="White" ToolTip="Configura ou executa a limpeza/verificação de links offline"/>
-                            <Button Grid.Column="5" Content="Analisar Link" Click="AnalyzeLinks_Click" Padding="12,5" Margin="5,0,0,0" Background="#3F51B5" Foreground="White" FontWeight="SemiBold" ToolTip="Executa o IPTV Checker (ONLINE/OFFLINE, duplicados e score)"/>
+                            <Button Grid.Column="5" Content="IPTV Checker" Click="AnalyzeLinks_Click" Padding="12,5" Margin="5,0,0,0" Background="#3F51B5" Foreground="White" FontWeight="SemiBold" ToolTip="Executa o IPTV Checker (ONLINE/OFFLINE, duplicados e score)"/>
                         </Grid>
 
                         <!-- Download Path -->

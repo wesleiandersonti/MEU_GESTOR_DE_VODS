@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>bot-iptv</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --card: #1f2937;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --bad: #ef4444;
+      --line: #374151;
+    }
+    body {
+      margin: 0;
+      font-family: Segoe UI, Tahoma, Arial, sans-serif;
+      background: radial-gradient(circle at 10% 10%, #1e293b, var(--bg));
+      color: var(--text);
+    }
+    .wrap {
+      max-width: 980px;
+      margin: 24px auto;
+      padding: 0 16px;
+    }
+    .title {
+      font-size: 28px;
+      font-weight: 700;
+      margin: 0 0 8px;
+    }
+    .subtitle {
+      margin: 0 0 18px;
+      color: var(--muted);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 12px;
+    }
+    .card {
+      background: linear-gradient(180deg, var(--panel), var(--card));
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 14px;
+    }
+    .card h3 {
+      margin: 0 0 10px;
+      font-size: 16px;
+    }
+    .list {
+      margin: 0;
+      padding-left: 18px;
+      line-height: 1.45;
+    }
+    .ok { color: var(--ok); }
+    .warn { color: var(--warn); }
+    .bad { color: var(--bad); }
+    .mono {
+      font-family: Consolas, monospace;
+      background: #0b1220;
+      border: 1px solid #243042;
+      border-radius: 6px;
+      padding: 2px 6px;
+      font-size: 12px;
+    }
+    .actions {
+      margin-top: 14px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    button {
+      background: #2563eb;
+      color: #fff;
+      border: 0;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover { filter: brightness(1.05); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1 class="title">bot-iptv</h1>
+    <p class="subtitle">Analise tecnica do repositiorio externo <span class="mono">minerdso/bot-teste-iptv-ssh</span>.</p>
+
+    <div class="grid">
+      <section class="card">
+        <h3>O que ele e</h3>
+        <ul class="list">
+          <li>Bot de Telegram em Python.</li>
+          <li>Aciona API externa para gerar "testes" de IPTV/SSH.</li>
+          <li>Nao possui interface web nativa para embed no app.</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h3>Compatibilidade com este app</h3>
+        <ul class="list">
+          <li class="warn">Executa melhor como servico Python separado.</li>
+          <li class="warn">No Windows, exige Python + dependencias + .env.</li>
+          <li class="ok">Esta aba pode servir como painel de orientacao e atalhos.</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h3>Pontos de atencao</h3>
+        <ul class="list">
+          <li class="bad">Repositorio analisado contem token em <span class="mono">.env</span>.</li>
+          <li class="bad">Usa endpoint externo nao controlado pelo seu sistema.</li>
+          <li class="warn">Nao recomendado para producao sem refatoracao/seguranca.</li>
+        </ul>
+      </section>
+    </div>
+
+    <div class="actions">
+      <button onclick="window.open('https://github.com/minerdso/bot-teste-iptv-ssh', '_blank')">Abrir repositiorio</button>
+      <button onclick="window.open('https://core.telegram.org/bots', '_blank')">Documentacao Telegram Bot</button>
+    </div>
+  </div>
+</body>
+</html>

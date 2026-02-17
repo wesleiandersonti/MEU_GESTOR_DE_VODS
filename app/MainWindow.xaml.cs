@@ -50,9 +50,35 @@ namespace MeuGestorVODs
         public string DownloadPath { get => _vm.DownloadPath; set => _vm.DownloadPath = value; }
         public string LocalFilePath { get => _vm.LocalFilePath; set => _vm.LocalFilePath = value; }
         public string FilterText { get => _vm.FilterText; set { _vm.FilterText = value; ApplyFilter(); } }
-        public string StatusMessage { get => _vm.StatusMessage; set => _vm.StatusMessage = value; }
-        public string CurrentVersionText { get => _vm.CurrentVersionText; set => _vm.CurrentVersionText = value; }
-        public bool IsUpdateAvailable { get => _vm.IsUpdateAvailable; set => _vm.IsUpdateAvailable = value; }
+        public string StatusMessage
+        {
+            get => _vm.StatusMessage;
+            set
+            {
+                _vm.StatusMessage = value;
+                OnPropertyChanged(nameof(StatusMessage));
+            }
+        }
+
+        public string CurrentVersionText
+        {
+            get => _vm.CurrentVersionText;
+            set
+            {
+                _vm.CurrentVersionText = value;
+                OnPropertyChanged(nameof(CurrentVersionText));
+            }
+        }
+
+        public bool IsUpdateAvailable
+        {
+            get => _vm.IsUpdateAvailable;
+            set
+            {
+                _vm.IsUpdateAvailable = value;
+                OnPropertyChanged(nameof(IsUpdateAvailable));
+            }
+        }
         public string ItemCountText { get => _vm.ItemCountText; set => _vm.ItemCountText = value; }
         public string GroupCountText { get => _vm.GroupCountText; set => _vm.GroupCountText = value; }
         public string GroupFilterInfoText { get => _vm.GroupFilterInfoText; set => _vm.GroupFilterInfoText = value; }
@@ -104,7 +130,7 @@ namespace MeuGestorVODs
             EnsureLinkDatabaseFiles();
             LoadLocalFileHistory();
             _releaseClient.DefaultRequestHeaders.Add("User-Agent", "MeuGestorVODs");
-            _vm.CurrentVersionText = $"Versao atual: {GetCurrentAppVersion()}";
+            CurrentVersionText = $"Versao atual: {GetCurrentAppVersion()}";
             _vm.ItemCountText = "Itens: 0";
             _vm.GroupCountText = "Grupos: 0";
             _vm.GroupFilterInfoText = "";
@@ -1419,6 +1445,22 @@ namespace MeuGestorVODs
             StatusMessage = "Modulo drm-player sem HTML integrado no momento.";
         }
 
+        private void MainMenuBotIptv_Click(object sender, RoutedEventArgs e)
+        {
+            if (TryOpenIntegratedHtml("bot-iptv", BotIptvHtmlFileName))
+            {
+                return;
+            }
+
+            System.Windows.MessageBox.Show(
+                "Arquivo HTML do modulo bot-iptv nao encontrado:\n- " + BotIptvHtmlFileName,
+                "bot-iptv",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+
+            StatusMessage = "Modulo bot-iptv sem HTML integrado no momento.";
+        }
+
         private void CastToDevice_Click(object sender, RoutedEventArgs e)
         {
             // Verifica se há itens selecionados
@@ -2156,11 +2198,19 @@ namespace MeuGestorVODs
             {
                 MaximizeRestoreWindowButton.Content = "❐";
                 MaximizeRestoreWindowButton.ToolTip = "Restaurar janela";
+                if (RootLayoutGrid != null)
+                {
+                    RootLayoutGrid.Margin = new Thickness(6);
+                }
             }
             else
             {
                 MaximizeRestoreWindowButton.Content = "▢";
                 MaximizeRestoreWindowButton.ToolTip = "Maximizar janela";
+                if (RootLayoutGrid != null)
+                {
+                    RootLayoutGrid.Margin = new Thickness(0);
+                }
             }
         }
 
