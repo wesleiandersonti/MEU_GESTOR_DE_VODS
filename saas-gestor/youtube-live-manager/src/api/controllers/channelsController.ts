@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
+import { defaultYouTubeLiveCatalog, seedDefaultYouTubeChannels } from '../../core/channelCatalog';
 import { ChannelRepository } from '../../db/repositories/channelRepository';
 import { buildLiveUrl, isYouTubeChannelUrl, normalizeYouTubeChannelUrl } from '../../utils/channel';
 
@@ -28,6 +29,29 @@ const updateSchema = z.object({
 
 export class ChannelsController {
   constructor(private readonly channelRepository: ChannelRepository) {}
+
+  getCatalog = async (_req: Request, res: Response): Promise<void> => {
+    res.json({
+      ok: true,
+      source: defaultYouTubeLiveCatalog.source,
+      categories: defaultYouTubeLiveCatalog.categories,
+      bouquets: defaultYouTubeLiveCatalog.bouquets,
+      users: defaultYouTubeLiveCatalog.users,
+      channels_count: defaultYouTubeLiveCatalog.channels.length,
+    });
+  };
+
+  importCatalog = async (_req: Request, res: Response): Promise<void> => {
+    const result = await seedDefaultYouTubeChannels(this.channelRepository);
+
+    res.json({
+      ok: true,
+      message: 'Catalogo YouTube Live importado com sucesso.',
+      imported: result.imported,
+      categories: result.categories,
+      channels: result.channels,
+    });
+  };
 
   list = async (req: Request, res: Response): Promise<void> => {
     const parsed = listQuerySchema.safeParse(req.query);

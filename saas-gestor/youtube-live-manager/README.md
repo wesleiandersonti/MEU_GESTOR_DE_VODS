@@ -65,6 +65,7 @@ Minimas para subir:
 - `API_KEY`
 - `YTDLP_PATH`
 - `SCAN_INTERVAL_SEC`, `SCAN_CONCURRENCY`
+- `SEED_DEFAULT_CHANNELS` (`true` para importar automaticamente o catalogo padrao na inicializacao)
 
 ## Migrations SQL (MariaDB)
 
@@ -158,6 +159,18 @@ Desativar (soft delete):
 
 ```bash
 curl -X DELETE -H "X-API-Key: $API_KEY" http://127.0.0.1:8085/channels/1
+```
+
+Importar catalogo Brasil + Global pronto (idempotente):
+
+```bash
+curl -X POST -H "X-API-Key: $API_KEY" http://127.0.0.1:8085/channels/catalog/import
+```
+
+Consultar categorias, bouquets e usuarios do catalogo:
+
+```bash
+curl -H "X-API-Key: $API_KEY" http://127.0.0.1:8085/channels/catalog
 ```
 
 ### 3) Status e historico

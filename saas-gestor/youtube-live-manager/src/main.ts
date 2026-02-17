@@ -17,6 +17,7 @@ import { requestLogger } from './api/middleware/requestLogger';
 import { streamAccess } from './api/middleware/streamAccess';
 import { env } from './config/env';
 import { ChannelChecker } from './core/channelChecker';
+import { seedDefaultYouTubeChannels } from './core/channelCatalog';
 import { CircuitBreaker } from './core/circuitBreaker';
 import { M3UExporter } from './core/exporter';
 import { LiveDetector } from './core/liveDetector';
@@ -53,6 +54,11 @@ async function bootstrap(): Promise<void> {
   const statusRepository = new StatusRepository();
   const historyRepository = new HistoryRepository();
   const exportRepository = new ExportRepository();
+
+  if (env.seedDefaultChannels) {
+    const seeded = await seedDefaultYouTubeChannels(channelRepository);
+    logger.info('Default YouTube catalog imported', seeded);
+  }
 
   const breaker = new CircuitBreaker(env.breaker.threshold, env.breaker.blockedCooldownSec * 1000);
   const detector = new LiveDetector();

@@ -162,6 +162,35 @@ export class ChannelRepository {
     return created;
   }
 
+  async upsertByChannelUrl(input: {
+    name: string;
+    category: string;
+    channelUrl: string;
+    liveUrl: string;
+    enabled: boolean;
+  }): Promise<ChannelRecord> {
+    const db = getDb();
+    const [result] = await db.execute<ResultSetHeader>(
+      `INSERT INTO yt_channels (name, category, channel_url, live_url, enabled)
+       VALUES (?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+         id = LAST_INSERT_ID(id),
+         name = VALUES(name),
+         category = VALUES(category),
+         live_url = VALUES(live_url),
+         enabled = VALUES(enabled),
+         updated_at = CURRENT_TIMESTAMP`,
+      [input.name, input.category, input.channelUrl, input.liveUrl, input.enabled ? 1 : 0],
+    );
+
+    const upserted = await this.getById(result.insertId);
+    if (!upserted) {
+      throw new Error('Falha ao atualizar ou criar canal');
+    }
+
+    return upserted;
+  }
+
   async update(
     id: number,
     input: Partial<Pick<ChannelRecord, 'name' | 'category' | 'channelUrl' | 'liveUrl' | 'enabled'>>,

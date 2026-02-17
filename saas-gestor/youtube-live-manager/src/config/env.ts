@@ -74,5 +74,6 @@ export const env = {
     max: toInt(process.env.RATE_LIMIT_MAX, 120),
   },
   autoMigrate: toBool(process.env.AUTO_MIGRATE, true),
+  seedDefaultChannels: toBool(process.env.SEED_DEFAULT_CHANNELS, true),
   version: '1.0.0',
 };
