@@ -1,11 +1,12 @@
 {
-  "version": "1.0.53",
-  "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.53/MeuGestorVODs-Setup-v1.0.53.exe",
+  "version": "1.0.54",
+  "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.54/MeuGestorVODs-Setup-v1.0.54.exe",
   "sha256": "",
   "notes": [
-    "Correcao: IPTV Checker voltou a classificar ONLINE/OFFLINE em listas com URLs simples",
-    "Correcao: Verificacao agora sanitiza URLs com parametros apos o caractere '|'",
-    "Melhoria: Parser M3U aceita linhas de stream sem #EXTINF",
-    "Melhoria: Health check trata protocolos nao suportados de forma explicita"
+    "Correcao: IPTV Checker agora permite cancelar analise em andamento pelo proprio botao",
+    "Melhoria: Checker e healthcheck usam sanitizacao centralizada de URL para probes",
+    "Melhoria: Limite de conexoes por host para reduzir falso offline em alto volume",
+    "Correcao: Update valida disponibilidade real do instalador antes de oferecer download",
+    "Melhoria: Logs tecnicos basicos adicionados para diagnostico de checker e updater"
   ]
 }

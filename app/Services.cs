@@ -465,7 +465,14 @@ public class LinkHealthService : IDisposable
 
     public LinkHealthService()
     {
-        _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(12) };
+        var handler = new SocketsHttpHandler
+        {
+            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli,
+            MaxConnectionsPerServer = 8,
+            PooledConnectionLifetime = TimeSpan.FromMinutes(3)
+        };
+
+        _httpClient = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(12) };
         _httpClient.DefaultRequestHeaders.Add("User-Agent", "MeuGestorVODs-LinkChecker/1.0");
     }
 
@@ -481,14 +488,13 @@ public class LinkHealthService : IDisposable
             return new LinkCheckResult { IsOnline = true, Details = "Arquivo local" };
         }
 
-        var probeUrl = SanitizeProbeUrl(url);
+        var probeUrl = UrlProbeSanitizer.Sanitize(url);
         if (string.IsNullOrWhiteSpace(probeUrl))
         {
             return new LinkCheckResult { IsOnline = false, Details = "URL invalida" };
         }
 
-        if (!Uri.TryCreate(probeUrl, UriKind.Absolute, out var probeUri) ||
-            (probeUri.Scheme != Uri.UriSchemeHttp && probeUri.Scheme != Uri.UriSchemeHttps))
+        if (!UrlProbeSanitizer.TryGetHttpProbeUri(probeUrl, out _, out _))
         {
             return new LinkCheckResult { IsOnline = false, Details = "Protocolo nao suportado" };
         }
@@ -521,23 +527,6 @@ public class LinkHealthService : IDisposable
         {
             return new LinkCheckResult { IsOnline = false, Details = ex.Message };
         }
-    }
-
-    private static string SanitizeProbeUrl(string url)
-    {
-        if (string.IsNullOrWhiteSpace(url))
-        {
-            return string.Empty;
-        }
-
-        var trimmed = url.Trim();
-        var pipeIndex = trimmed.IndexOf('|');
-        if (pipeIndex > 0)
-        {
-            trimmed = trimmed[..pipeIndex].Trim();
-        }
-
-        return trimmed;
     }
 
     public void Dispose()

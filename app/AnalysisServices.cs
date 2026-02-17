@@ -36,7 +36,14 @@ public class StreamCheckService : IDisposable
 
     public StreamCheckService()
     {
-        _httpClient = new HttpClient
+        var handler = new SocketsHttpHandler
+        {
+            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli,
+            MaxConnectionsPerServer = 10,
+            PooledConnectionLifetime = TimeSpan.FromMinutes(5)
+        };
+
+        _httpClient = new HttpClient(handler)
         {
             Timeout = Timeout.InfiniteTimeSpan
         };
@@ -65,7 +72,7 @@ public class StreamCheckService : IDisposable
 
     private async Task<StreamCheckItemResult> CheckOneAsync(M3UEntry entry, StreamCheckOptions options, CancellationToken cancellationToken)
     {
-        var probeUrl = SanitizeProbeUrl(entry.Url);
+        var probeUrl = UrlProbeSanitizer.Sanitize(entry.Url);
         var normalized = DuplicateDetectionService.NormalizeUrl(probeUrl);
         var host = TryGetHost(probeUrl);
         var retries = Math.Max(0, options.RetryCount);
@@ -77,8 +84,7 @@ public class StreamCheckService : IDisposable
             return BuildResult(entry, normalized, host, false, 0, "URL invalida para verificacao");
         }
 
-        if (!Uri.TryCreate(probeUrl, UriKind.Absolute, out var probeUri) ||
-            (probeUri.Scheme != Uri.UriSchemeHttp && probeUri.Scheme != Uri.UriSchemeHttps))
+        if (!UrlProbeSanitizer.TryGetHttpProbeUri(probeUrl, out _, out _))
         {
             return BuildResult(entry, normalized, host, false, 0, "Protocolo nao suportado pelo checker");
         }
@@ -209,23 +215,6 @@ public class StreamCheckService : IDisposable
         }
 
         return "desconhecido";
-    }
-
-    private static string SanitizeProbeUrl(string url)
-    {
-        if (string.IsNullOrWhiteSpace(url))
-        {
-            return string.Empty;
-        }
-
-        var trimmed = url.Trim();
-        var pipeIndex = trimmed.IndexOf('|');
-        if (pipeIndex > 0)
-        {
-            trimmed = trimmed[..pipeIndex].Trim();
-        }
-
-        return trimmed;
     }
 
     public void Dispose()

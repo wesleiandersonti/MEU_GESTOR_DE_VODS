@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Reflection;
 using System.Security.Cryptography;
@@ -27,6 +28,8 @@ namespace MeuGestorVODs
                 return;
             }
 
+            var correlationId = Guid.NewGuid().ToString("N")[..8];
+
             try
             {
                 _isUpdateInProgress = true;
@@ -35,6 +38,7 @@ namespace MeuGestorVODs
                 var currentVersion = GetCurrentAppVersion();
                 CurrentVersionText = $"Versao atual: {currentVersion}";
                 StatusMessage = "Verificando atualizacoes...";
+                DiagnosticsLogger.Info("Updater", $"[{correlationId}] Verificacao iniciada. Current={currentVersion}");
 
                 var manifest = await GetLatestUpdateManifestAsync();
                 if (manifest != null)
@@ -48,27 +52,38 @@ namespace MeuGestorVODs
                             MessageBoxImage.Information);
                         StatusMessage = "Aplicativo ja esta atualizado";
                         IsUpdateAvailable = false;
+                        DiagnosticsLogger.Info("Updater", $"[{correlationId}] Ja atualizado pelo manifesto. Latest={manifest.Version}");
                         return;
                     }
 
-                    IsUpdateAvailable = true;
-                    var notes = BuildManifestNotesPreview(manifest);
-                    var confirmManifest = System.Windows.MessageBox.Show(
-                        $"Nova versao encontrada: {manifest.Version}.\nVersao atual: {currentVersion}.\n\n" +
-                        $"Melhorias:\n{notes}\n\n" +
-                        "Deseja baixar e atualizar agora automaticamente?",
-                        "Atualizacao disponivel",
-                        MessageBoxButton.YesNo,
-                        MessageBoxImage.Question);
-
-                    if (confirmManifest != MessageBoxResult.Yes)
+                    if (!await IsInstallerUrlAvailableAsync(manifest.InstallerUrl))
                     {
-                        StatusMessage = "Atualizacao cancelada pelo usuario";
+                        DiagnosticsLogger.Warn("Updater", $"[{correlationId}] Manifesto encontrado, mas instalador indisponivel: {manifest.InstallerUrl}");
+                        StatusMessage = "Manifesto encontrado, mas instalador indisponivel. Tentando fallback por release...";
+                    }
+                    else
+                    {
+                        IsUpdateAvailable = true;
+                        var notes = BuildManifestNotesPreview(manifest);
+                        var confirmManifest = System.Windows.MessageBox.Show(
+                            $"Nova versao encontrada: {manifest.Version}.\nVersao atual: {currentVersion}.\n\n" +
+                            $"Melhorias:\n{notes}\n\n" +
+                            "Deseja baixar e atualizar agora automaticamente?",
+                            "Atualizacao disponivel",
+                            MessageBoxButton.YesNo,
+                            MessageBoxImage.Question);
+
+                        if (confirmManifest != MessageBoxResult.Yes)
+                        {
+                            StatusMessage = "Atualizacao cancelada pelo usuario";
+                            DiagnosticsLogger.Warn("Updater", $"[{correlationId}] Atualizacao via manifesto cancelada pelo usuario.");
+                            return;
+                        }
+
+                        DiagnosticsLogger.Info("Updater", $"[{correlationId}] Atualizacao via manifesto aprovada. Target={manifest.Version}");
+                        await InstallManifestAsync(manifest, "Atualizacao");
                         return;
                     }
-
-                    await InstallManifestAsync(manifest, "Atualizacao");
-                    return;
                 }
 
                 var latest = await GetLatestInstallableReleaseAsync();
@@ -84,11 +99,13 @@ namespace MeuGestorVODs
                             MessageBoxButton.OK,
                             MessageBoxImage.Information);
                         StatusMessage = "Tag nova encontrada, aguardando release instalavel";
+                        DiagnosticsLogger.Warn("Updater", $"[{correlationId}] Tag nova sem release instalavel: {latestTag}");
                     }
                     else
                     {
                         System.Windows.MessageBox.Show("Nao foi possivel obter informacoes da ultima versao.", "Atualizacao", MessageBoxButton.OK, MessageBoxImage.Warning);
                         StatusMessage = "Falha ao verificar atualizacoes";
+                        DiagnosticsLogger.Warn("Updater", $"[{correlationId}] Falha ao obter release e tags.");
                     }
 
                     return;
@@ -103,6 +120,25 @@ namespace MeuGestorVODs
                         MessageBoxImage.Information);
                     StatusMessage = "Aplicativo ja esta atualizado";
                     IsUpdateAvailable = false;
+                    DiagnosticsLogger.Info("Updater", $"[{correlationId}] Ja atualizado pela release. Latest={latest.TagName}");
+                    return;
+                }
+
+                var releaseInstallerUrl = latest.Assets
+                    .Where(a => a.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) &&
+                                a.Name.Contains("Setup", StringComparison.OrdinalIgnoreCase))
+                    .Select(a => a.BrowserDownloadUrl)
+                    .FirstOrDefault();
+
+                if (string.IsNullOrWhiteSpace(releaseInstallerUrl) || !await IsInstallerUrlAvailableAsync(releaseInstallerUrl))
+                {
+                    System.Windows.MessageBox.Show(
+                        $"Foi encontrada a release {latest.TagName}, mas o instalador ainda nao esta disponivel para download.",
+                        "Atualizacao",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                    StatusMessage = "Release encontrada sem instalador disponivel no momento";
+                    DiagnosticsLogger.Warn("Updater", $"[{correlationId}] Release encontrada sem instalador disponivel: {latest.TagName}");
                     return;
                 }
 
@@ -119,15 +155,18 @@ namespace MeuGestorVODs
                 if (confirm != MessageBoxResult.Yes)
                 {
                     StatusMessage = "Atualizacao cancelada pelo usuario";
+                    DiagnosticsLogger.Warn("Updater", $"[{correlationId}] Atualizacao via release cancelada pelo usuario.");
                     return;
                 }
 
+                DiagnosticsLogger.Info("Updater", $"[{correlationId}] Atualizacao via release aprovada. Target={latest.TagName}");
                 await InstallReleaseAsync(latest, "Atualizacao");
             }
             catch (Exception ex)
             {
                 System.Windows.MessageBox.Show($"Erro ao verificar/atualizar: {ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
                 StatusMessage = "Erro na atualizacao";
+                DiagnosticsLogger.Error("Updater", $"[{correlationId}] Erro na verificacao/atualizacao.", ex);
             }
             finally
             {
@@ -145,7 +184,8 @@ namespace MeuGestorVODs
                 var manifest = await GetLatestUpdateManifestAsync();
                 if (manifest != null)
                 {
-                    if (IsNewerRelease(manifest.Version, currentVersion))
+                    if (IsNewerRelease(manifest.Version, currentVersion) &&
+                        await IsInstallerUrlAvailableAsync(manifest.InstallerUrl))
                     {
                         IsUpdateAvailable = true;
                         StatusMessage = $"Nova versao disponivel: {manifest.Version}";
@@ -156,9 +196,19 @@ namespace MeuGestorVODs
                 var latest = await GetLatestInstallableReleaseAsync();
                 if (latest != null && IsNewerRelease(latest.TagName, currentVersion))
                 {
-                    IsUpdateAvailable = true;
-                    StatusMessage = $"Nova versao disponivel: {latest.TagName}";
-                    return;
+                    var releaseInstallerUrl = latest.Assets
+                        .Where(a => a.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) &&
+                                    a.Name.Contains("Setup", StringComparison.OrdinalIgnoreCase))
+                        .Select(a => a.BrowserDownloadUrl)
+                        .FirstOrDefault();
+
+                    if (!string.IsNullOrWhiteSpace(releaseInstallerUrl) &&
+                        await IsInstallerUrlAvailableAsync(releaseInstallerUrl))
+                    {
+                        IsUpdateAvailable = true;
+                        StatusMessage = $"Nova versao disponivel: {latest.TagName}";
+                        return;
+                    }
                 }
 
                 IsUpdateAvailable = false;
@@ -265,7 +315,13 @@ namespace MeuGestorVODs
             var downloadPath = Path.Combine(Path.GetTempPath(), "MeuGestorVODs", installer.Name);
             Directory.CreateDirectory(Path.GetDirectoryName(downloadPath)!);
 
+            if (!await IsInstallerUrlAvailableAsync(installer.BrowserDownloadUrl))
+            {
+                throw new InvalidOperationException("Instalador da release nao esta disponivel para download neste momento.");
+            }
+
             StatusMessage = $"{operation}: baixando {release.TagName}...";
+            DiagnosticsLogger.Info("Updater", $"Download de release iniciado: {release.TagName} => {installer.Name}");
             await DownloadFileWithProgressAsync(installer.BrowserDownloadUrl, downloadPath);
 
             StatusMessage = $"{operation}: abrindo instalador...";
@@ -291,6 +347,11 @@ namespace MeuGestorVODs
                 throw new InvalidOperationException("Manifesto de atualizacao sem URL valida de instalador.");
             }
 
+            if (!await IsInstallerUrlAvailableAsync(manifest.InstallerUrl))
+            {
+                throw new InvalidOperationException("Instalador informado no manifesto nao esta disponivel para download.");
+            }
+
             var fileName = Path.GetFileName(installerUri.LocalPath);
             if (string.IsNullOrWhiteSpace(fileName))
             {
@@ -301,6 +362,7 @@ namespace MeuGestorVODs
             Directory.CreateDirectory(Path.GetDirectoryName(downloadPath)!);
 
             StatusMessage = $"{operation}: baixando {manifest.Version}...";
+            DiagnosticsLogger.Info("Updater", $"Download via manifesto iniciado: {manifest.Version} => {fileName}");
             await DownloadFileWithProgressAsync(manifest.InstallerUrl, downloadPath);
 
             if (!string.IsNullOrWhiteSpace(manifest.Sha256))
@@ -359,12 +421,56 @@ namespace MeuGestorVODs
 
                     return manifest;
                 }
-                catch
+                catch (Exception ex)
                 {
+                    DiagnosticsLogger.Warn("Updater", $"Falha ao ler manifesto em {url}: {ex.Message}");
                 }
             }
 
             return null;
+        }
+
+        private async Task<bool> IsInstallerUrlAvailableAsync(string installerUrl)
+        {
+            if (!Uri.TryCreate(installerUrl, UriKind.Absolute, out var installerUri))
+            {
+                return false;
+            }
+
+            if (!installerUri.Scheme.Equals(Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) &&
+                !installerUri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            try
+            {
+                using var timeoutCts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(10));
+
+                using var headRequest = new HttpRequestMessage(HttpMethod.Head, installerUri);
+                using var headResponse = await _releaseClient.SendAsync(headRequest, HttpCompletionOption.ResponseHeadersRead, timeoutCts.Token);
+                if ((int)headResponse.StatusCode < 400)
+                {
+                    return true;
+                }
+
+                if (headResponse.StatusCode == HttpStatusCode.MethodNotAllowed ||
+                    headResponse.StatusCode == HttpStatusCode.NotImplemented ||
+                    headResponse.StatusCode == HttpStatusCode.Forbidden)
+                {
+                    using var getRequest = new HttpRequestMessage(HttpMethod.Get, installerUri);
+                    getRequest.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(0, 0);
+                    using var getResponse = await _releaseClient.SendAsync(getRequest, HttpCompletionOption.ResponseHeadersRead, timeoutCts.Token);
+                    return (int)getResponse.StatusCode < 400 ||
+                           getResponse.StatusCode == HttpStatusCode.RequestedRangeNotSatisfiable;
+                }
+
+                return false;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private async Task DownloadFileWithProgressAsync(string url, string outputPath)

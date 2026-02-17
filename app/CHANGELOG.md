@@ -30,6 +30,25 @@ e este projeto adere a [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.0.54] - 2026-02-17
+
+### 🐛 Corrigido (Fix)
+- **Cancelamento do IPTV Checker em execucao**
+  - O botao `IPTV Checker` agora cancela a analise em andamento quando acionado novamente.
+  - Evita bloqueio operacional em listas grandes.
+
+### 🔄 Melhorado (UX/UI)
+- **Estabilidade do checker e healthcheck**
+  - Sanitizacao de URL para probes centralizada em um unico utilitario.
+  - Limite de conexoes por host para reduzir falso offline em alto volume.
+
+### 🛠️ Técnico (Build/Pipeline)
+- **Robustez do update**
+  - Verificacao de disponibilidade real do instalador antes de oferecer download via manifesto/release.
+  - Logging tecnico basico para diagnostico de checker e updater em `%LocalAppData%\\MeuGestorVODs\\logs`.
+
+---
+
 ## [1.0.53] - 2026-02-17
 
 ### 🐛 Corrigido (Fix)

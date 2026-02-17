@@ -112,6 +112,7 @@ namespace MeuGestorVODs
         private MonitorPanelLayout _monitorPanelLayout = MonitorPanelLayout.Normal;
         private AppThemeMode _appThemeMode = AppThemeMode.System;
         private CancellationTokenSource? _downloadCts;
+        private CancellationTokenSource? _analysisCts;
         private ManualResetEventSlim _downloadPauseGate = new(initialState: true);
         private bool _isDownloadRunning;
         private bool _isDownloadPaused;
@@ -3779,6 +3780,9 @@ namespace MeuGestorVODs
         {
             if (IsAnalyzingLinks)
             {
+                _analysisCts?.Cancel();
+                StatusMessage = "Cancelando IPTV Checker...";
+                DiagnosticsLogger.Warn("Checker", "Cancelamento solicitado pelo usuario.");
                 return;
             }
 
@@ -3791,11 +3795,23 @@ namespace MeuGestorVODs
             IsAnalyzingLinks = true;
             IsLoading = true;
             StatusMessage = "Iniciando IPTV Checker...";
+
+            _analysisCts?.Dispose();
+            _analysisCts = new CancellationTokenSource();
+
+            var correlationId = Guid.NewGuid().ToString("N")[..8];
+            var total = _allEntries.Count;
+            var checkedCount = 0;
+            var onlineCount = 0;
+            var offlineCount = 0;
+            var duplicateCount = 0;
             DispatcherTimer? uiTimer = null;
 
             try
             {
-                var duplicateCount = _duplicateDetectionService.MarkDuplicates(_allEntries);
+                DiagnosticsLogger.Info("Checker", $"[{correlationId}] Inicio da analise. Total={total}");
+
+                duplicateCount = _duplicateDetectionService.MarkDuplicates(_allEntries);
 
                 foreach (var entry in _allEntries)
                 {
@@ -3804,11 +3820,6 @@ namespace MeuGestorVODs
                     entry.ResponseTimeMs = 0;
                     entry.LastCheckedAt = null;
                 }
-
-                var total = _allEntries.Count;
-                var checkedCount = 0;
-                var onlineCount = 0;
-                var offlineCount = 0;
 
                 var queue = new ConcurrentQueue<StreamCheckItemResult>();
                 var logs = new ConcurrentQueue<StreamCheckLogEntry>();
@@ -3878,7 +3889,7 @@ namespace MeuGestorVODs
 
                         return Task.CompletedTask;
                     },
-                    CancellationToken.None);
+                    _analysisCts.Token);
 
                 uiTimer.Stop();
 
@@ -3922,15 +3933,27 @@ namespace MeuGestorVODs
                 ApplyFilter();
                 EntriesList.Items.Refresh();
                 StatusMessage = "IPTV Checker concluído com sucesso.";
+                DiagnosticsLogger.Info(
+                    "Checker",
+                    $"[{correlationId}] Concluido. Checked={checkedCount} Online={onlineCount} Offline={offlineCount} Duplicados={duplicateCount}");
+            }
+            catch (OperationCanceledException)
+            {
+                AnalysisProgressText = $"Analise cancelada: {checkedCount} de {total}";
+                StatusMessage = "IPTV Checker cancelado.";
+                DiagnosticsLogger.Warn("Checker", $"[{correlationId}] Cancelado. Checked={checkedCount}/{total}");
             }
             catch (Exception ex)
             {
                 System.Windows.MessageBox.Show($"Erro ao analisar links: {ex.Message}", "Analisar Link", MessageBoxButton.OK, MessageBoxImage.Error);
                 StatusMessage = "Erro durante análise de links";
+                DiagnosticsLogger.Error("Checker", $"[{correlationId}] Falha durante analise.", ex);
             }
             finally
             {
                 uiTimer?.Stop();
+                _analysisCts?.Dispose();
+                _analysisCts = null;
                 IsLoading = false;
                 IsAnalyzingLinks = false;
             }
