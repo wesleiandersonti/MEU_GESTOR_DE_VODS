@@ -160,7 +160,19 @@
                         <ContextMenu>
                             <MenuItem Header="1 INICIO" Click="MainMenuHome_Click"/>
                             <MenuItem Header="2 CONECTA XUI-ONE" Click="MainMenuConnectXuiOne_Click"/>
-                            <MenuItem Header="3 IP E PORTA" Click="MainMenuIpPort_Click"/>
+                            <MenuItem Header="3 IP E PORTA">
+                                <MenuItem Header="Aplicativo">
+                                    <MenuItem Header="PlaylistFinder instalado" Click="MainMenuIpPortPlaylistFinderInApp_Click"/>
+                                    <MenuItem Header="Abrir playlistfinder.app (EXE)" Click="MainMenuIpPortPlaylistFinder_Click"/>
+                                    <MenuItem Header="Abrir pasta do aplicativo" Click="MainMenuIpPortAppFolder_Click"/>
+                                </MenuItem>
+                                <MenuItem Header="Conteudos">
+                                    <MenuItem Header="Abrir pasta do curso" Click="MainMenuIpPortCourseFolder_Click"/>
+                                    <MenuItem Header="Abrir aula completa (AVI)" Click="MainMenuIpPortAulaCompleta_Click"/>
+                                    <MenuItem Header="Abrir aula resumida (MP4)" Click="MainMenuIpPortAulaResumida_Click"/>
+                                    <MenuItem Header="Abrir arquivo exemplo M3U" Click="MainMenuIpPortM3uExample_Click"/>
+                                </MenuItem>
+                            </MenuItem>
                             <MenuItem Header="4 YouTube_para_m3u" Click="MainMenuYouTubeToM3u_Click"/>
                             <MenuItem Header="5 DARK M3U CHECKER" Click="MainMenuDarkM3uChecker_Click"/>
                             <MenuItem Header="6 LisoFlix" Click="MainMenuLisoFlix_Click"/>

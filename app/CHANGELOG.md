@@ -30,6 +30,19 @@ e este projeto adere a [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.0.49] - 2026-02-17
+
+### 🎉 Adicionado (Features)
+- **PlaylistFinder integrado no sistema**
+  - `playlistfinder.app.exe` agora vai junto no instalador e pode ser aberto direto pelo menu `IP E PORTA`.
+  - Novo menu com submenus `Aplicativo` e `Conteudos` para acesso rapido aos recursos.
+
+### 🛠️ Técnico (Build/Pipeline)
+- **Empacotamento de componente local**
+  - Pasta `app/ip-e-porta` agora e copiada automaticamente no build e no publish.
+
+---
+
 ## [1.0.48] - 2026-02-17
 
 ### 🐛 Corrigido (Fix)

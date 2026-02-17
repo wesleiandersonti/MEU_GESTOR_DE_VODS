@@ -39,6 +39,8 @@ namespace MeuGestorVODs
         private const string DarkBulletHtmlFileName = "DARK BULLET COM PLAYER INTEGRADO.HTML";
         private const string DrmPlayerHtmlFileName = "drm-player/index.html";
         private const string BotIptvHtmlFileName = "bot-iptv/index.html";
+        private const string BundledIpPortFolderName = "ip-e-porta";
+        private const string PlaylistFinderExecutableFileName = "playlistfinder.app.exe";
         private static readonly HashSet<string> LiveCategoryNames = new(StringComparer.OrdinalIgnoreCase)
         {
             "Canais",

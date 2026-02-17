@@ -1,10 +1,11 @@
 {
-  "version": "1.0.48",
-  "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.48/MeuGestorVODs-Setup-v1.0.48.exe",
+  "version": "1.0.49",
+  "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.49/MeuGestorVODs-Setup-v1.0.49.exe",
   "sha256": "",
   "notes": [
-    "Correcao: Removido icone em XAML da janela para evitar falha de inicializacao",
-    "Melhoria: Icone icon_256 mantido no executavel e instalador",
-    "Correcao: Inicializacao estabilizada para instalacao limpa"
+    "NOVO: PlaylistFinder integrado no aplicativo (sem depender de navegador externo)",
+    "NOVO: Menu IP E PORTA com submenus Aplicativo e Conteudos",
+    "Melhoria: Executavel playlistfinder.app passa a ser instalado junto com o sistema",
+    "Melhoria: Acesso rapido a pasta do curso e arquivos de conteudo"
   ]
 }

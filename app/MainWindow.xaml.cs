@@ -1154,12 +1154,157 @@ namespace MeuGestorVODs
 
         private void MainMenuIpPort_Click(object sender, RoutedEventArgs e)
         {
-            System.Windows.MessageBox.Show(
-                "Modulo IP E PORTA em desenvolvimento.\n\nEm breve vamos incluir esta funcionalidade.",
-                "IP E PORTA",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
-            StatusMessage = "Modulo IP E PORTA ainda em desenvolvimento.";
+            MainMenuIpPortPlaylistFinderInApp_Click(sender, e);
+        }
+
+        private void MainMenuIpPortPlaylistFinderInApp_Click(object sender, RoutedEventArgs e)
+        {
+            MainMenuIpPortPlaylistFinder_Click(sender, e);
+        }
+
+        private void MainMenuIpPortPlaylistFinder_Click(object sender, RoutedEventArgs e)
+        {
+            var executablePath = ResolvePlaylistFinderExecutablePath();
+            if (!TryOpenLocalPath(executablePath, "IP E PORTA", "playlistfinder.app.exe nao foi encontrado no pacote integrado do aplicativo."))
+            {
+                return;
+            }
+
+            StatusMessage = "playlistfinder.app aberto com sucesso.";
+        }
+
+        private void MainMenuIpPortAppFolder_Click(object sender, RoutedEventArgs e)
+        {
+            var rootPath = ResolveIpPortRootDirectory();
+            if (!TryOpenLocalPath(rootPath, "IP E PORTA", "Pasta 'ip e porta' nao encontrada."))
+            {
+                return;
+            }
+
+            StatusMessage = "Pasta do aplicativo IP E PORTA aberta.";
+        }
+
+        private void MainMenuIpPortCourseFolder_Click(object sender, RoutedEventArgs e)
+        {
+            var coursePath = ResolveIpPortCourseDirectory();
+            if (!TryOpenLocalPath(coursePath, "IP E PORTA", "Pasta do curso nao encontrada dentro de 'ip e porta'."))
+            {
+                return;
+            }
+
+            StatusMessage = "Conteudos do curso abertos.";
+        }
+
+        private void MainMenuIpPortAulaCompleta_Click(object sender, RoutedEventArgs e)
+        {
+            var coursePath = ResolveIpPortCourseDirectory();
+            var filePath = ResolveFirstFile(coursePath, "AULA COMPLETA*.avi");
+            if (!TryOpenLocalPath(filePath, "IP E PORTA", "Arquivo 'AULA COMPLETA.avi' nao encontrado."))
+            {
+                return;
+            }
+
+            StatusMessage = "Aula completa aberta.";
+        }
+
+        private void MainMenuIpPortAulaResumida_Click(object sender, RoutedEventArgs e)
+        {
+            var coursePath = ResolveIpPortCourseDirectory();
+            var filePath = ResolveFirstFile(coursePath, "AULA RESUMIDA*.mp4");
+            if (!TryOpenLocalPath(filePath, "IP E PORTA", "Arquivo 'AULA RESUMIDA.mp4' nao encontrado."))
+            {
+                return;
+            }
+
+            StatusMessage = "Aula resumida aberta.";
+        }
+
+        private void MainMenuIpPortM3uExample_Click(object sender, RoutedEventArgs e)
+        {
+            var coursePath = ResolveIpPortCourseDirectory();
+            var filePath = ResolveFirstFile(coursePath, "ARQUIVO*.m3u");
+            if (!TryOpenLocalPath(filePath, "IP E PORTA", "Arquivo M3U de exemplo nao encontrado."))
+            {
+                return;
+            }
+
+            StatusMessage = "Arquivo M3U de exemplo aberto.";
+        }
+
+        private string? ResolveIpPortRootDirectory()
+        {
+            var candidates = new[]
+            {
+                Path.Combine(AppContext.BaseDirectory, BundledIpPortFolderName),
+                Path.Combine(Environment.CurrentDirectory, BundledIpPortFolderName),
+                Path.Combine(AppContext.BaseDirectory, "ip e porta"),
+                Path.Combine(Environment.CurrentDirectory, "ip e porta"),
+                Path.Combine(Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..")), "ip e porta"),
+                Path.Combine(Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..")), "ip e porta")
+            };
+
+            return candidates.FirstOrDefault(Directory.Exists);
+        }
+
+        private string? ResolveIpPortCourseDirectory()
+        {
+            var rootPath = ResolveIpPortRootDirectory();
+            if (string.IsNullOrWhiteSpace(rootPath) || !Directory.Exists(rootPath))
+            {
+                return null;
+            }
+
+            return Directory.GetDirectories(rootPath, "CURSO*", SearchOption.TopDirectoryOnly)
+                .FirstOrDefault();
+        }
+
+        private string? ResolvePlaylistFinderExecutablePath()
+        {
+            var rootPath = ResolveIpPortRootDirectory();
+            if (string.IsNullOrWhiteSpace(rootPath) || !Directory.Exists(rootPath))
+            {
+                return null;
+            }
+
+            var direct = Path.Combine(rootPath, PlaylistFinderExecutableFileName);
+            if (File.Exists(direct))
+            {
+                return direct;
+            }
+
+            return ResolveFirstFile(rootPath, "playlistfinder*.exe", SearchOption.AllDirectories);
+        }
+
+        private static string? ResolveFirstFile(string? baseDirectory, string pattern, SearchOption searchOption = SearchOption.TopDirectoryOnly)
+        {
+            if (string.IsNullOrWhiteSpace(baseDirectory) || !Directory.Exists(baseDirectory))
+            {
+                return null;
+            }
+
+            return Directory.GetFiles(baseDirectory, pattern, searchOption).FirstOrDefault();
+        }
+
+        private bool TryOpenLocalPath(string? path, string title, string missingMessage)
+        {
+            if (string.IsNullOrWhiteSpace(path) || (!File.Exists(path) && !Directory.Exists(path)))
+            {
+                var rootPath = ResolveIpPortRootDirectory() ?? "(nao localizado)";
+                System.Windows.MessageBox.Show(
+                    missingMessage + "\n\nBase procurada:\n" + rootPath,
+                    title,
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return false;
+            }
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = path,
+                UseShellExecute = true
+            });
+
+            return true;
         }
 
         private void MainMenuYouTubeToM3u_Click(object sender, RoutedEventArgs e)
@@ -1932,9 +2077,19 @@ namespace MeuGestorVODs
                         webView.CoreWebView2.Settings.AreDevToolsEnabled = true;
                         webView.CoreWebView2.Settings.AreHostObjectsAllowed = true;
                         
-                        // Navega para o arquivo HTML
-                        var fullPath = Path.GetFullPath(htmlPath);
-                        webView.CoreWebView2.Navigate($"file:///{fullPath.Replace("\\", "/")}");
+                        // Navega para URL externa ou arquivo local
+                        if (Uri.TryCreate(htmlPath, UriKind.Absolute, out var destinationUri) &&
+                            (destinationUri.Scheme.Equals(Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) ||
+                             destinationUri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) ||
+                             destinationUri.Scheme.Equals(Uri.UriSchemeFile, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            webView.CoreWebView2.Navigate(destinationUri.AbsoluteUri);
+                        }
+                        else
+                        {
+                            var fullPath = Path.GetFullPath(htmlPath);
+                            webView.CoreWebView2.Navigate($"file:///{fullPath.Replace("\\", "/")}");
+                        }
                     }
                     else if (e.InitializationException != null)
                     {
