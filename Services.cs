@@ -4,18 +4,34 @@ using System.IO;
 using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace MeuGestorVODs;
 
-public class M3UEntry
+public class M3UEntry : System.ComponentModel.INotifyPropertyChanged
 {
+    private bool _isSelected;
+
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string Url { get; set; } = string.Empty;
     public string GroupTitle { get; set; } = string.Empty;
     public string Category { get; set; } = "Sem Categoria";
     public string SubCategory { get; set; } = "Geral";
-    public bool IsSelected { get; set; }
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected == value)
+            {
+                return;
+            }
+
+            _isSelected = value;
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(IsSelected)));
+        }
+    }
 
     public string GroupDisplay => $"{Category} | {SubCategory}";
     public string GroupKey => $"{Category}|{SubCategory}";
@@ -33,6 +49,8 @@ public class M3UEntry
             return string.IsNullOrWhiteSpace(name) ? "unknown" : name;
         }
     }
+
+    public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
 }
 
 public static class M3UParser
@@ -182,5 +200,263 @@ public class DownloadService
                 progress.Report((double)totalRead / totalBytes * 100);
             }
         }
+    }
+}
+
+public class StorageService
+{
+    public void EnsureLinkDatabaseFiles(string downloadPath, string vodFileName, string liveFileName)
+    {
+        if (!Directory.Exists(downloadPath))
+        {
+            Directory.CreateDirectory(downloadPath);
+        }
+
+        var vodFilePath = Path.Combine(downloadPath, vodFileName);
+        if (!File.Exists(vodFilePath))
+        {
+            File.WriteAllLines(vodFilePath, new[]
+            {
+                "# Banco TXT de links VOD (videos e series)",
+                "# Formato: Nome|Grupo|URL"
+            });
+        }
+
+        var liveFilePath = Path.Combine(downloadPath, liveFileName);
+        if (!File.Exists(liveFilePath))
+        {
+            File.WriteAllLines(liveFilePath, new[]
+            {
+                "# Banco TXT de links de canais ao vivo",
+                "# Formato: Nome|Grupo|URL"
+            });
+        }
+    }
+
+    public (int newVod, int newLive) PersistLinkDatabases(string downloadPath, IEnumerable<M3UEntry> entries, string vodFileName, string liveFileName)
+    {
+        EnsureLinkDatabaseFiles(downloadPath, vodFileName, liveFileName);
+
+        var vodFilePath = Path.Combine(downloadPath, vodFileName);
+        var liveFilePath = Path.Combine(downloadPath, liveFileName);
+
+        var newVod = MergeEntriesIntoDatabase(vodFilePath, entries.Where(IsVodEntry));
+        var newLive = MergeEntriesIntoDatabase(liveFilePath, entries.Where(e => !IsVodEntry(e)));
+
+        return (newVod, newLive);
+    }
+
+    public Dictionary<string, string> EnsureAndLoadDownloadStructure(string downloadPath, string structureFileName)
+    {
+        if (!Directory.Exists(downloadPath))
+        {
+            Directory.CreateDirectory(downloadPath);
+        }
+
+        var structurePath = Path.Combine(downloadPath, structureFileName);
+        if (!File.Exists(structurePath))
+        {
+            File.WriteAllLines(structurePath, new[]
+            {
+                "# Estrutura de pastas para downloads",
+                "# Formato: Categoria=Pasta",
+                "Videos=Videos",
+                "Series=Series",
+                "Filmes=Filmes",
+                "Canais=Canais",
+                "24 Horas=24 Horas",
+                "Documentarios=Documentarios",
+                "Novelas=Novelas",
+                "Outros=Outros"
+            });
+        }
+
+        var structure = LoadStructure(structurePath);
+
+        foreach (var folder in structure.Values.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            Directory.CreateDirectory(Path.Combine(downloadPath, folder));
+        }
+
+        return structure;
+    }
+
+    public bool IsVodEntry(M3UEntry entry)
+    {
+        var category = ResolveCategory(entry);
+        if (string.Equals(category, "Canais", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(category, "24 Horas", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var url = entry.Url?.ToLowerInvariant() ?? string.Empty;
+        if (url.Contains("/live") || url.Contains("/channel") || url.Contains("channels"))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    public string BuildOutputPath(string downloadPath, Dictionary<string, string> structure, M3UEntry entry)
+    {
+        var category = ResolveCategory(entry);
+        if (!structure.TryGetValue(category, out var folderName))
+        {
+            if (!structure.TryGetValue("Outros", out folderName))
+            {
+                folderName = "Outros";
+            }
+        }
+
+        var folderPath = Path.Combine(downloadPath, folderName);
+        Directory.CreateDirectory(folderPath);
+
+        return Path.Combine(folderPath, entry.SanitizedName + ResolveFileExtension(entry.Url));
+    }
+
+    private static int MergeEntriesIntoDatabase(string filePath, IEnumerable<M3UEntry> entries)
+    {
+        var existingUrls = LoadExistingUrls(filePath);
+        var linesToAppend = new List<string>();
+
+        foreach (var entry in entries)
+        {
+            if (string.IsNullOrWhiteSpace(entry.Url))
+            {
+                continue;
+            }
+
+            if (!existingUrls.Add(entry.Url.Trim()))
+            {
+                continue;
+            }
+
+            var safeName = (entry.Name ?? string.Empty).Replace("|", " ").Trim();
+            var safeGroup = (entry.GroupTitle ?? string.Empty).Replace("|", " ").Trim();
+            var safeUrl = entry.Url.Trim();
+            linesToAppend.Add($"{safeName}|{safeGroup}|{safeUrl}");
+        }
+
+        if (linesToAppend.Count > 0)
+        {
+            File.AppendAllLines(filePath, linesToAppend);
+        }
+
+        return linesToAppend.Count;
+    }
+
+    private static HashSet<string> LoadExistingUrls(string filePath)
+    {
+        var urls = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (!File.Exists(filePath))
+        {
+            return urls;
+        }
+
+        foreach (var rawLine in File.ReadLines(filePath))
+        {
+            var line = rawLine.Trim();
+            if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var parts = line.Split('|');
+            if (parts.Length == 0)
+            {
+                continue;
+            }
+
+            var url = parts[^1].Trim();
+            if (!string.IsNullOrWhiteSpace(url))
+            {
+                urls.Add(url);
+            }
+        }
+
+        return urls;
+    }
+
+    private static Dictionary<string, string> LoadStructure(string structurePath)
+    {
+        var structure = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var rawLine in File.ReadAllLines(structurePath))
+        {
+            var line = rawLine.Trim();
+            if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var separator = line.IndexOf('=');
+            if (separator <= 0 || separator == line.Length - 1)
+            {
+                continue;
+            }
+
+            var category = line[..separator].Trim();
+            var folderName = SanitizeFolderName(line[(separator + 1)..].Trim());
+
+            if (!string.IsNullOrWhiteSpace(category) && !string.IsNullOrWhiteSpace(folderName))
+            {
+                structure[category] = folderName;
+            }
+        }
+
+        if (structure.Count == 0)
+        {
+            structure["Videos"] = "Videos";
+            structure["Series"] = "Series";
+            structure["Outros"] = "Outros";
+        }
+
+        return structure;
+    }
+
+    private static string ResolveCategory(M3UEntry entry)
+    {
+        var text = $"{entry.GroupTitle} {entry.Name} {entry.Url}".ToLowerInvariant();
+
+        if (text.Contains("serie") || text.Contains("series") || text.Contains("/series")) return "Series";
+        if (text.Contains("filme") || text.Contains("movie") || text.Contains("cinema") || text.Contains("/movie")) return "Filmes";
+        if (text.Contains("canal") || text.Contains("channels")) return "Canais";
+        if (text.Contains("24 horas") || text.Contains("24h")) return "24 Horas";
+        if (text.Contains("document")) return "Documentarios";
+        if (text.Contains("novela")) return "Novelas";
+
+        return "Videos";
+    }
+
+    private static string ResolveFileExtension(string url)
+    {
+        try
+        {
+            if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
+            {
+                var ext = Path.GetExtension(uri.AbsolutePath);
+                if (!string.IsNullOrWhiteSpace(ext) && ext.Length <= 5)
+                {
+                    return ext;
+                }
+            }
+        }
+        catch
+        {
+        }
+
+        return ".mp4";
+    }
+
+    private static string SanitizeFolderName(string folderName)
+    {
+        foreach (var c in Path.GetInvalidFileNameChars())
+        {
+            folderName = folderName.Replace(c, '_');
+        }
+
+        return folderName.Trim();
     }
 }

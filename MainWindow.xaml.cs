@@ -119,6 +119,7 @@ namespace MeuGestorVODs
 
         private M3UService _m3uService;
         private DownloadService _downloadService;
+        private StorageService _storageService;
 
         public MainWindow()
         {
@@ -126,6 +127,7 @@ namespace MeuGestorVODs
             DataContext = this;
             _m3uService = new M3UService();
             _downloadService = new DownloadService();
+            _storageService = new StorageService();
             DownloadPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), "Meu Gestor VODs");
             EnsureAndLoadDownloadStructure();
             EnsureLinkDatabaseFiles();
@@ -648,159 +650,24 @@ namespace MeuGestorVODs
 
         private void EnsureLinkDatabaseFiles()
         {
-            if (!Directory.Exists(DownloadPath))
-            {
-                Directory.CreateDirectory(DownloadPath);
-            }
-
-            var vodFilePath = Path.Combine(DownloadPath, VodLinksDatabaseFileName);
-            if (!File.Exists(vodFilePath))
-            {
-                File.WriteAllLines(vodFilePath, new[]
-                {
-                    "# Banco TXT de links VOD (videos e series)",
-                    "# Formato: Nome|Grupo|URL"
-                });
-            }
-
-            var liveFilePath = Path.Combine(DownloadPath, LiveLinksDatabaseFileName);
-            if (!File.Exists(liveFilePath))
-            {
-                File.WriteAllLines(liveFilePath, new[]
-                {
-                    "# Banco TXT de links de canais ao vivo",
-                    "# Formato: Nome|Grupo|URL"
-                });
-            }
+            _storageService.EnsureLinkDatabaseFiles(DownloadPath, VodLinksDatabaseFileName, LiveLinksDatabaseFileName);
         }
 
         private (int newVod, int newLive) PersistLinkDatabases(IEnumerable<M3UEntry> entries)
         {
-            EnsureLinkDatabaseFiles();
-
-            var vodFilePath = Path.Combine(DownloadPath, VodLinksDatabaseFileName);
-            var liveFilePath = Path.Combine(DownloadPath, LiveLinksDatabaseFileName);
-
-            var newVod = MergeEntriesIntoDatabase(vodFilePath, entries.Where(IsVodEntry));
-            var newLive = MergeEntriesIntoDatabase(liveFilePath, entries.Where(e => !IsVodEntry(e)));
-
-            return (newVod, newLive);
-        }
-
-        private int MergeEntriesIntoDatabase(string filePath, IEnumerable<M3UEntry> entries)
-        {
-            var existingUrls = LoadExistingUrls(filePath);
-            var linesToAppend = new List<string>();
-
-            foreach (var entry in entries)
-            {
-                if (string.IsNullOrWhiteSpace(entry.Url))
-                {
-                    continue;
-                }
-
-                if (!existingUrls.Add(entry.Url.Trim()))
-                {
-                    continue;
-                }
-
-                var safeName = (entry.Name ?? string.Empty).Replace("|", " ").Trim();
-                var safeGroup = (entry.GroupTitle ?? string.Empty).Replace("|", " ").Trim();
-                var safeUrl = entry.Url.Trim();
-                linesToAppend.Add($"{safeName}|{safeGroup}|{safeUrl}");
-            }
-
-            if (linesToAppend.Count > 0)
-            {
-                File.AppendAllLines(filePath, linesToAppend);
-            }
-
-            return linesToAppend.Count;
-        }
-
-        private static HashSet<string> LoadExistingUrls(string filePath)
-        {
-            var urls = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            if (!File.Exists(filePath))
-            {
-                return urls;
-            }
-
-            foreach (var rawLine in File.ReadLines(filePath))
-            {
-                var line = rawLine.Trim();
-                if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#", StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
-                var parts = line.Split('|');
-                if (parts.Length == 0)
-                {
-                    continue;
-                }
-
-                var url = parts[^1].Trim();
-                if (!string.IsNullOrWhiteSpace(url))
-                {
-                    urls.Add(url);
-                }
-            }
-
-            return urls;
+            return _storageService.PersistLinkDatabases(DownloadPath, entries, VodLinksDatabaseFileName, LiveLinksDatabaseFileName);
         }
 
         private bool IsVodEntry(M3UEntry entry)
         {
-            var category = ResolveCategory(entry);
-            if (string.Equals(category, "Canais", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(category, "24 Horas", StringComparison.OrdinalIgnoreCase))
-            {
-                return false;
-            }
-
-            var url = entry.Url?.ToLowerInvariant() ?? string.Empty;
-            if (url.Contains("/live") || url.Contains("/channel") || url.Contains("channels"))
-            {
-                return false;
-            }
-
-            return true;
+            return _storageService.IsVodEntry(entry);
         }
 
         private void EnsureAndLoadDownloadStructure()
         {
             try
             {
-                if (!Directory.Exists(DownloadPath))
-                {
-                    Directory.CreateDirectory(DownloadPath);
-                }
-
-                var structurePath = Path.Combine(DownloadPath, DownloadStructureFileName);
-                if (!File.Exists(structurePath))
-                {
-                    File.WriteAllLines(structurePath, new[]
-                    {
-                        "# Estrutura de pastas para downloads",
-                        "# Formato: Categoria=Pasta",
-                        "Videos=Videos",
-                        "Series=Series",
-                        "Filmes=Filmes",
-                        "Canais=Canais",
-                        "24 Horas=24 Horas",
-                        "Documentarios=Documentarios",
-                        "Novelas=Novelas",
-                        "Outros=Outros"
-                    });
-                }
-
-                _downloadStructure = LoadStructure(structurePath);
-
-                foreach (var folder in _downloadStructure.Values.Distinct(StringComparer.OrdinalIgnoreCase))
-                {
-                    Directory.CreateDirectory(Path.Combine(DownloadPath, folder));
-                }
+                _downloadStructure = _storageService.EnsureAndLoadDownloadStructure(DownloadPath, DownloadStructureFileName);
             }
             catch (Exception ex)
             {
@@ -808,102 +675,9 @@ namespace MeuGestorVODs
             }
         }
 
-        private Dictionary<string, string> LoadStructure(string structurePath)
-        {
-            var structure = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-            foreach (var rawLine in File.ReadAllLines(structurePath))
-            {
-                var line = rawLine.Trim();
-                if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#", StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
-                var separator = line.IndexOf('=');
-                if (separator <= 0 || separator == line.Length - 1)
-                {
-                    continue;
-                }
-
-                var category = line[..separator].Trim();
-                var folderName = SanitizeFolderName(line[(separator + 1)..].Trim());
-
-                if (!string.IsNullOrWhiteSpace(category) && !string.IsNullOrWhiteSpace(folderName))
-                {
-                    structure[category] = folderName;
-                }
-            }
-
-            if (structure.Count == 0)
-            {
-                structure["Videos"] = "Videos";
-                structure["Series"] = "Series";
-                structure["Outros"] = "Outros";
-            }
-
-            return structure;
-        }
-
         private string BuildOutputPath(M3UEntry entry)
         {
-            var category = ResolveCategory(entry);
-            if (!_downloadStructure.TryGetValue(category, out var folderName))
-            {
-                if (!_downloadStructure.TryGetValue("Outros", out folderName))
-                {
-                    folderName = "Outros";
-                }
-            }
-
-            var folderPath = Path.Combine(DownloadPath, folderName);
-            Directory.CreateDirectory(folderPath);
-
-            return Path.Combine(folderPath, entry.SanitizedName + ResolveFileExtension(entry.Url));
-        }
-
-        private string ResolveCategory(M3UEntry entry)
-        {
-            var text = $"{entry.GroupTitle} {entry.Name} {entry.Url}".ToLowerInvariant();
-
-            if (text.Contains("serie") || text.Contains("series") || text.Contains("/series")) return "Series";
-            if (text.Contains("filme") || text.Contains("movie") || text.Contains("cinema") || text.Contains("/movie")) return "Filmes";
-            if (text.Contains("canal") || text.Contains("channels")) return "Canais";
-            if (text.Contains("24 horas") || text.Contains("24h")) return "24 Horas";
-            if (text.Contains("document")) return "Documentarios";
-            if (text.Contains("novela")) return "Novelas";
-
-            return "Videos";
-        }
-
-        private static string ResolveFileExtension(string url)
-        {
-            try
-            {
-                if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
-                {
-                    var ext = Path.GetExtension(uri.AbsolutePath);
-                    if (!string.IsNullOrWhiteSpace(ext) && ext.Length <= 5)
-                    {
-                        return ext;
-                    }
-                }
-            }
-            catch
-            {
-            }
-
-            return ".mp4";
-        }
-
-        private static string SanitizeFolderName(string folderName)
-        {
-            foreach (var c in Path.GetInvalidFileNameChars())
-            {
-                folderName = folderName.Replace(c, '_');
-            }
-
-            return folderName.Trim();
+            return _storageService.BuildOutputPath(DownloadPath, _downloadStructure, entry);
         }
 
         private async void CheckUpdates_Click(object sender, RoutedEventArgs e)
