@@ -281,7 +281,7 @@ namespace MeuGestorVODs
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
 
-            Application.Current.Shutdown();
+            System.Windows.Application.Current.Shutdown();
         }
 
         private async Task InstallManifestAsync(UpdateManifest manifest, string operation)
@@ -325,7 +325,7 @@ namespace MeuGestorVODs
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
 
-            Application.Current.Shutdown();
+            System.Windows.Application.Current.Shutdown();
         }
 
         private async Task<UpdateManifest?> GetLatestUpdateManifestAsync()
@@ -575,14 +575,14 @@ namespace MeuGestorVODs
 
         private static string? PromptForText(string message, string title, string defaultValue)
         {
-            var input = new TextBox
+            var input = new System.Windows.Controls.TextBox
             {
                 Margin = new Thickness(0, 10, 0, 10),
                 Text = defaultValue,
                 MinWidth = 320
             };
 
-            var okButton = new Button
+            var okButton = new System.Windows.Controls.Button
             {
                 Content = "OK",
                 Width = 90,
@@ -590,26 +590,26 @@ namespace MeuGestorVODs
                 IsDefault = true
             };
 
-            var cancelButton = new Button
+            var cancelButton = new System.Windows.Controls.Button
             {
                 Content = "Cancelar",
                 Width = 90,
                 IsCancel = true
             };
 
-            var buttons = new StackPanel
+            var buttons = new System.Windows.Controls.StackPanel
             {
-                Orientation = Orientation.Horizontal,
-                HorizontalAlignment = HorizontalAlignment.Right
+                Orientation = System.Windows.Controls.Orientation.Horizontal,
+                HorizontalAlignment = System.Windows.HorizontalAlignment.Right
             };
             buttons.Children.Add(okButton);
             buttons.Children.Add(cancelButton);
 
-            var panel = new StackPanel
+            var panel = new System.Windows.Controls.StackPanel
             {
                 Margin = new Thickness(16)
             };
-            panel.Children.Add(new TextBlock
+            panel.Children.Add(new System.Windows.Controls.TextBlock
             {
                 Text = message,
                 TextWrapping = TextWrapping.Wrap
@@ -617,7 +617,7 @@ namespace MeuGestorVODs
             panel.Children.Add(input);
             panel.Children.Add(buttons);
 
-            var dialog = new Window
+            var dialog = new System.Windows.Window
             {
                 Title = title,
                 Content = panel,
@@ -625,7 +625,7 @@ namespace MeuGestorVODs
                 SizeToContent = SizeToContent.WidthAndHeight,
                 ResizeMode = ResizeMode.NoResize,
                 WindowStyle = WindowStyle.ToolWindow,
-                Owner = Application.Current?.MainWindow
+                Owner = System.Windows.Application.Current?.MainWindow
             };
 
             okButton.Click += (_, __) => dialog.DialogResult = true;
