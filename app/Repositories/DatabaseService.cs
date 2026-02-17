@@ -737,5 +737,44 @@ namespace MeuGestorVODs.Repositories
 
             transaction.Commit();
         }
+
+        public async Task ApplyAnalysisRetentionPolicyAsync(
+            int streamCheckRetentionDays,
+            int serverScoreRetentionDays,
+            int maxStreamCheckRows)
+        {
+            var safeStreamDays = Math.Max(1, streamCheckRetentionDays);
+            var safeScoreDays = Math.Max(1, serverScoreRetentionDays);
+            var safeMaxRows = Math.Max(5000, maxStreamCheckRows);
+
+            var streamCutoff = DateTime.Now.AddDays(-safeStreamDays);
+            var scoreCutoff = DateTime.Now.AddDays(-safeScoreDays);
+
+            using var connection = _db.CreateConnection();
+            connection.Open();
+            using var transaction = connection.BeginTransaction();
+
+            await connection.ExecuteAsync(@"
+                DELETE FROM StreamCheckLog
+                WHERE CheckedAt < @Cutoff
+            ", new { Cutoff = streamCutoff }, transaction);
+
+            await connection.ExecuteAsync(@"
+                DELETE FROM ServerScoreSnapshot
+                WHERE AnalyzedAt < @Cutoff
+            ", new { Cutoff = scoreCutoff }, transaction);
+
+            await connection.ExecuteAsync(@"
+                DELETE FROM StreamCheckLog
+                WHERE Id IN (
+                    SELECT Id
+                    FROM StreamCheckLog
+                    ORDER BY CheckedAt DESC, Id DESC
+                    LIMIT -1 OFFSET @MaxRows
+                )
+            ", new { MaxRows = safeMaxRows }, transaction);
+
+            transaction.Commit();
+        }
     }
 }

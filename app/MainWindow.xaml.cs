@@ -104,6 +104,7 @@ namespace MeuGestorVODs
         private StreamCheckService _streamCheckService;
         private ServerScoreService _serverScoreService;
         private DuplicateDetectionService _duplicateDetectionService;
+        private CheckerOrchestrator _checkerOrchestrator;
         private DatabaseService? _databaseService;
         private MigrationService? _migrationService;
         private readonly DispatcherTimer _linkCheckTimer = new DispatcherTimer();
@@ -168,6 +169,7 @@ namespace MeuGestorVODs
             _streamCheckService = new StreamCheckService();
             _serverScoreService = new ServerScoreService();
             _duplicateDetectionService = new DuplicateDetectionService();
+            _checkerOrchestrator = new CheckerOrchestrator(_streamCheckService, _duplicateDetectionService, _serverScoreService);
             _vm.DownloadPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), "Meu Gestor VODs");
             EnsureAndLoadDownloadStructure();
             InitializeDatabase();
@@ -3811,18 +3813,7 @@ namespace MeuGestorVODs
             {
                 DiagnosticsLogger.Info("Checker", $"[{correlationId}] Inicio da analise. Total={total}");
 
-                duplicateCount = _duplicateDetectionService.MarkDuplicates(_allEntries);
-
-                foreach (var entry in _allEntries)
-                {
-                    entry.CheckStatus = ItemStatus.Checking;
-                    entry.CheckDetails = "Aguardando";
-                    entry.ResponseTimeMs = 0;
-                    entry.LastCheckedAt = null;
-                }
-
                 var queue = new ConcurrentQueue<StreamCheckItemResult>();
-                var logs = new ConcurrentQueue<StreamCheckLogEntry>();
 
                 uiTimer = new DispatcherTimer
                 {
@@ -3842,9 +3833,14 @@ namespace MeuGestorVODs
                         updated++;
                     }
 
-                    AnalysisProgressValue = total == 0 ? 0 : checkedCount * 100.0 / total;
-                    AnalysisProgressText = $"Analisando {checkedCount} de {total} links...";
-                    AnalysisSummaryText = $"Analisados: {checkedCount} | ONLINE: {onlineCount} | OFFLINE: {offlineCount} | Duplicados: {duplicateCount}";
+                    var checkedSnapshot = Volatile.Read(ref checkedCount);
+                    var onlineSnapshot = Volatile.Read(ref onlineCount);
+                    var offlineSnapshot = Volatile.Read(ref offlineCount);
+                    var duplicateSnapshot = Volatile.Read(ref duplicateCount);
+
+                    AnalysisProgressValue = total == 0 ? 0 : checkedSnapshot * 100.0 / total;
+                    AnalysisProgressText = $"Analisando {checkedSnapshot} de {total} links...";
+                    AnalysisSummaryText = $"Analisados: {checkedSnapshot} | ONLINE: {onlineSnapshot} | OFFLINE: {offlineSnapshot} | Duplicados: {duplicateSnapshot}";
                 };
 
                 uiTimer.Start();
@@ -3857,37 +3853,17 @@ namespace MeuGestorVODs
                     RetryDelayMilliseconds = 300
                 };
 
-                await _streamCheckService.AnalyzeAsync(
+                var runResult = await _checkerOrchestrator.RunAsync(
                     _allEntries,
                     options,
-                    result =>
+                    (result, snapshot) =>
                     {
                         queue.Enqueue(result);
 
-                        if (result.IsOnline)
-                        {
-                            Interlocked.Increment(ref onlineCount);
-                        }
-                        else
-                        {
-                            Interlocked.Increment(ref offlineCount);
-                        }
-
-                        Interlocked.Increment(ref checkedCount);
-
-                        logs.Enqueue(new StreamCheckLogEntry
-                        {
-                            Url = result.Entry.Url,
-                            NormalizedUrl = result.NormalizedUrl,
-                            ServerHost = result.ServerHost,
-                            Status = result.IsOnline ? "ONLINE" : "OFFLINE",
-                            ResponseTimeMs = result.ResponseTimeMs,
-                            IsDuplicate = result.Entry.IsDuplicate,
-                            CheckedAt = result.CheckedAt,
-                            Details = result.Details
-                        });
-
-                        return Task.CompletedTask;
+                        Interlocked.Exchange(ref checkedCount, snapshot.CheckedCount);
+                        Interlocked.Exchange(ref onlineCount, snapshot.OnlineCount);
+                        Interlocked.Exchange(ref offlineCount, snapshot.OfflineCount);
+                        Interlocked.Exchange(ref duplicateCount, snapshot.DuplicateCount);
                     },
                     _analysisCts.Token);
 
@@ -3903,14 +3879,14 @@ namespace MeuGestorVODs
                 }
 
                 ServerScores.Clear();
-                foreach (var score in _serverScoreService.Calculate(_allEntries))
+                foreach (var score in runResult.ServerScores)
                 {
                     ServerScores.Add(score);
                 }
 
                 if (_databaseService != null)
                 {
-                    await _databaseService.M3uUrls.AddStreamCheckLogsAsync(logs.ToArray());
+                    await _databaseService.M3uUrls.AddStreamCheckLogsAsync(runResult.Logs);
                     await _databaseService.M3uUrls.AddServerScoreSnapshotsAsync(
                         ServerScores.Select(x => new ServerScoreSnapshotEntry
                         {
@@ -3924,18 +3900,33 @@ namespace MeuGestorVODs
                             OfflineLinks = x.OfflineLinks
                         }),
                         DateTime.Now);
+
+                    if (_databaseService.M3uUrls is SqliteM3uUrlRepository sqliteRepository)
+                    {
+                        try
+                        {
+                            await sqliteRepository.ApplyAnalysisRetentionPolicyAsync(
+                                streamCheckRetentionDays: StreamCheckLogRetentionDays,
+                                serverScoreRetentionDays: ServerScoreRetentionDays,
+                                maxStreamCheckRows: MaxStreamCheckLogRows);
+                        }
+                        catch (Exception retentionEx)
+                        {
+                            DiagnosticsLogger.Warn("Checker", $"[{correlationId}] Falha na politica de retencao de logs: {retentionEx.Message}");
+                        }
+                    }
                 }
 
                 AnalysisProgressValue = 100;
-                AnalysisProgressText = $"Análise concluída: {checkedCount} de {total}";
-                AnalysisSummaryText = $"Analisados: {checkedCount} | ONLINE: {onlineCount} | OFFLINE: {offlineCount} | Duplicados: {duplicateCount}";
+                AnalysisProgressText = $"Análise concluída: {runResult.CheckedCount} de {runResult.TotalCount}";
+                AnalysisSummaryText = $"Analisados: {runResult.CheckedCount} | ONLINE: {runResult.OnlineCount} | OFFLINE: {runResult.OfflineCount} | Duplicados: {runResult.DuplicateCount}";
 
                 ApplyFilter();
                 EntriesList.Items.Refresh();
                 StatusMessage = "IPTV Checker concluído com sucesso.";
                 DiagnosticsLogger.Info(
                     "Checker",
-                    $"[{correlationId}] Concluido. Checked={checkedCount} Online={onlineCount} Offline={offlineCount} Duplicados={duplicateCount}");
+                    $"[{correlationId}] Concluido. Checked={runResult.CheckedCount} Online={runResult.OnlineCount} Offline={runResult.OfflineCount} Duplicados={runResult.DuplicateCount}");
             }
             catch (OperationCanceledException)
             {

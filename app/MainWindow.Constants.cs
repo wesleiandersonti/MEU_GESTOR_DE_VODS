@@ -49,5 +49,8 @@ namespace MeuGestorVODs
         private const string RepoApiBase = "https://api.github.com/repos/wesleiandersonti/MEU_GESTOR_DE_VODS";
         private const string UpdateManifestPrimaryUrl = "https://raw.githubusercontent.com/wesleiandersonti/MEU_GESTOR_DE_VODS/main/app/update.json";
         private const string UpdateManifestFallbackUrl = "https://wesleiandersonti.github.io/MEU_GESTOR_DE_VODS/update.json";
+        private const int StreamCheckLogRetentionDays = 14;
+        private const int ServerScoreRetentionDays = 30;
+        private const int MaxStreamCheckLogRows = 250000;
     }
 }

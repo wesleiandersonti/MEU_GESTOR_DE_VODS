@@ -30,6 +30,25 @@ e este projeto adere a [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.0.55] - 2026-02-17
+
+### 🛠️ Técnico (Arquitetura)
+- **Refatoracao segura do checker**
+  - Fluxo principal de analise IPTV extraido de `MainWindow` para `CheckerOrchestrator`.
+  - Mantidos handlers e contratos publicos da interface atual, sem breaking changes para o usuario.
+
+### 🔄 Melhorado (Manutencao)
+- **Consolidacao de resultado de analise**
+  - Contadores, logs e score por servidor passam a ser retornados como resultado unico do orquestrador.
+  - `MainWindow` permanece focada na camada de UI e atualizacao visual.
+
+### 🗄️ Banco de Dados
+- **Retencao automatica de telemetria de analise**
+  - Nova politica de limpeza para `StreamCheckLog` e `ServerScoreSnapshot`.
+  - Evita crescimento indefinido do banco local em uso continuo.
+
+---
+
 ## [1.0.54] - 2026-02-17
 
 ### 🐛 Corrigido (Fix)
