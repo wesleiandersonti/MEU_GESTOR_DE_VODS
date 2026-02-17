@@ -41,7 +41,7 @@ namespace MeuGestorVODs
                 {
                     if (!IsNewerRelease(manifest.Version, currentVersion))
                     {
-                        MessageBox.Show(
+                        System.Windows.MessageBox.Show(
                             $"Voce ja esta na versao mais recente ({currentVersion}).\nVersao disponivel no manifesto: {manifest.Version}.",
                             "Atualizacao",
                             MessageBoxButton.OK,
@@ -53,7 +53,7 @@ namespace MeuGestorVODs
 
                     IsUpdateAvailable = true;
                     var notes = BuildManifestNotesPreview(manifest);
-                    var confirmManifest = MessageBox.Show(
+                    var confirmManifest = System.Windows.MessageBox.Show(
                         $"Nova versao encontrada: {manifest.Version}.\nVersao atual: {currentVersion}.\n\n" +
                         $"Melhorias:\n{notes}\n\n" +
                         "Deseja baixar e atualizar agora automaticamente?",
@@ -77,7 +77,7 @@ namespace MeuGestorVODs
                     var latestTag = await GetLatestTagNameAsync();
                     if (!string.IsNullOrWhiteSpace(latestTag) && IsNewerRelease(latestTag, currentVersion))
                     {
-                        MessageBox.Show(
+                        System.Windows.MessageBox.Show(
                             $"Foi encontrada uma tag mais nova ({latestTag}), mas ainda sem release instalavel.\n\n" +
                             "Publique uma release no GitHub com o instalador Setup.exe para aparecer na atualizacao automatica.",
                             "Atualizacao",
@@ -87,7 +87,7 @@ namespace MeuGestorVODs
                     }
                     else
                     {
-                        MessageBox.Show("Nao foi possivel obter informacoes da ultima versao.", "Atualizacao", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        System.Windows.MessageBox.Show("Nao foi possivel obter informacoes da ultima versao.", "Atualizacao", MessageBoxButton.OK, MessageBoxImage.Warning);
                         StatusMessage = "Falha ao verificar atualizacoes";
                     }
 
@@ -96,7 +96,7 @@ namespace MeuGestorVODs
 
                 if (!IsNewerRelease(latest.TagName, currentVersion))
                 {
-                    MessageBox.Show(
+                    System.Windows.MessageBox.Show(
                         $"Voce ja esta na versao mais recente ({currentVersion}).\nUltima release publicada: {latest.TagName}.",
                         "Atualizacao",
                         MessageBoxButton.OK,
@@ -108,7 +108,7 @@ namespace MeuGestorVODs
 
                 IsUpdateAvailable = true;
                 var releaseNotes = BuildReleaseNotesPreview(latest.Body);
-                var confirm = MessageBox.Show(
+                var confirm = System.Windows.MessageBox.Show(
                     $"Nova versao encontrada: {latest.TagName}.\nVersao atual: {currentVersion}.\n\n" +
                     $"Melhorias:\n{releaseNotes}\n\n" +
                     "Deseja baixar e atualizar agora automaticamente?",
@@ -126,7 +126,7 @@ namespace MeuGestorVODs
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Erro ao verificar/atualizar: {ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Windows.MessageBox.Show($"Erro ao verificar/atualizar: {ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
                 StatusMessage = "Erro na atualizacao";
             }
             finally
@@ -185,7 +185,7 @@ namespace MeuGestorVODs
                 var releases = await GetStableReleasesAsync();
                 if (releases.Count == 0)
                 {
-                    MessageBox.Show("Nenhuma release encontrada.", "Rollback", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    System.Windows.MessageBox.Show("Nenhuma release encontrada.", "Rollback", MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
 
@@ -198,7 +198,7 @@ namespace MeuGestorVODs
 
                 if (older.Count == 0)
                 {
-                    MessageBox.Show("Nao ha versoes anteriores disponiveis para rollback.", "Rollback", MessageBoxButton.OK, MessageBoxImage.Information);
+                    System.Windows.MessageBox.Show("Nao ha versoes anteriores disponiveis para rollback.", "Rollback", MessageBoxButton.OK, MessageBoxImage.Information);
                     return;
                 }
 
@@ -220,12 +220,12 @@ namespace MeuGestorVODs
 
                 if (selected == null)
                 {
-                    MessageBox.Show("Versao nao encontrada entre as releases disponiveis.", "Rollback", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    System.Windows.MessageBox.Show("Versao nao encontrada entre as releases disponiveis.", "Rollback", MessageBoxButton.OK, MessageBoxImage.Warning);
                     StatusMessage = "Versao informada nao encontrada";
                     return;
                 }
 
-                var confirm = MessageBox.Show(
+                var confirm = System.Windows.MessageBox.Show(
                     $"Deseja voltar para a versao {selected.TagName}?",
                     "Confirmar rollback",
                     MessageBoxButton.YesNo,
@@ -241,7 +241,7 @@ namespace MeuGestorVODs
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Erro no rollback: {ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Windows.MessageBox.Show($"Erro no rollback: {ex.Message}", "Erro", MessageBoxButton.OK, MessageBoxImage.Error);
                 StatusMessage = "Erro no rollback";
             }
             finally
@@ -275,7 +275,7 @@ namespace MeuGestorVODs
                 UseShellExecute = true
             });
 
-            MessageBox.Show(
+            System.Windows.MessageBox.Show(
                 $"Instalador da versao {release.TagName} aberto com sucesso.\n\nFinalize o assistente para concluir.",
                 operation,
                 MessageBoxButton.OK,
@@ -319,7 +319,7 @@ namespace MeuGestorVODs
                 UseShellExecute = true
             });
 
-            MessageBox.Show(
+            System.Windows.MessageBox.Show(
                 $"Instalador da versao {manifest.Version} aberto com sucesso.\n\nFinalize o assistente para concluir.",
                 operation,
                 MessageBoxButton.OK,
