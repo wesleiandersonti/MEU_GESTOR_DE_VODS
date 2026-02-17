@@ -1,0 +1,3 @@
+#EXTM3U
+#EXTINF:-1 tvg-id="NOME DO CANAL" tvg-name="NOME DO CANAL" tvg-logo="URL DA IMAGEM" group-title="Canais | NOME CATEGORIA",NOME DO CANAL
+(URL DO CANAL)

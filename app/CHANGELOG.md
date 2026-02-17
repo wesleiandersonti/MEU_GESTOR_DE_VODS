@@ -30,6 +30,19 @@ e este projeto adere a [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.0.50] - 2026-02-17
+
+### 🎉 Adicionado (Features)
+- **Pacote IP E PORTA instalado junto com o app**
+  - Inclusao de `playlistfinder.app.exe`, utilitarios (`.bat`, `tools`) e conteudos de apoio no instalador.
+  - Menu `IP E PORTA` com submenus `Aplicativo` e `Conteudos` para acesso direto dentro do sistema.
+
+### ⚠️ Observacao
+- **Limite de arquivo do GitHub**
+  - Videos `AULA COMPLETA.avi` e `AULA RESUMIDA.mp4` nao entram no pacote por excederem 100 MB por arquivo.
+
+---
+
 ## [1.0.49] - 2026-02-17
 
 ### 🎉 Adicionado (Features)

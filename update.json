@@ -1,11 +1,11 @@
 {
-  "version": "1.0.49",
-  "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.49/MeuGestorVODs-Setup-v1.0.49.exe",
+  "version": "1.0.50",
+  "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.50/MeuGestorVODs-Setup-v1.0.50.exe",
   "sha256": "",
   "notes": [
-    "NOVO: PlaylistFinder integrado no aplicativo (sem depender de navegador externo)",
-    "NOVO: Menu IP E PORTA com submenus Aplicativo e Conteudos",
-    "Melhoria: Executavel playlistfinder.app passa a ser instalado junto com o sistema",
-    "Melhoria: Acesso rapido a pasta do curso e arquivos de conteudo"
+    "NOVO: Pacote IP E PORTA com playlistfinder.app e ferramentas incluído na instalação",
+    "NOVO: Conteudos do curso (logos, m3u e utilitarios) embarcados no app",
+    "Melhoria: Submenus Aplicativo e Conteudos no menu IP E PORTA",
+    "Observacao: videos muito grandes do curso ficam fora do instalador por limite do GitHub"
   ]
 }
