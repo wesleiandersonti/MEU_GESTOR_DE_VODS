@@ -1,11 +1,12 @@
 {
-  "version": "1.0.45",
-  "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.45/MeuGestorVODs-Setup-v1.0.45.exe",
+  "version": "1.0.46",
+  "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.46/MeuGestorVODs-Setup-v1.0.46.exe",
   "sha256": "",
   "notes": [
-    "NOVO: Modulo drm-player integrado no menu principal com abertura em aba interna",
-    "NOVO: Pacote app/drm-player incluido no build e publish automaticamente",
-    "Melhoria: Metadados de commit agora podem ser preenchidos automaticamente no pipeline de builds",
-    "Melhoria: Ajustes de navegacao e experiencia dos modulos HTML integrados"
+    "NOVO: Modulo bot-iptv adicionado ao menu com abertura em aba interna",
+    "Melhoria: Botao Analisar Link renomeado para IPTV Checker",
+    "Correcao: Versao voltou a aparecer corretamente no rodape",
+    "Correcao: Rodape permanece visivel ao maximizar a janela",
+    "Melhoria: Icone oficial aplicado no executavel, janela e instalador"
   ]
 }

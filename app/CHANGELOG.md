@@ -30,6 +30,26 @@ e este projeto adere a [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.0.46] - 2026-02-17
+
+### 🎉 Adicionado (Features)
+- **Modulo bot-iptv integrado no app**
+  - Novo item de menu `bot-iptv` com abertura em aba interna.
+  - Inclusao do painel HTML local em `app/bot-iptv`.
+
+### 🔄 Melhorado (UX/UI)
+- **Ajustes de interface na tela principal**
+  - Botao `Analisar Link` renomeado para `IPTV Checker`.
+  - Indicacao de versao restaurada no rodape.
+  - Rodape mantido visivel ao maximizar a janela.
+  - Icone oficial aplicado no app e no instalador.
+
+### 🛠️ Técnico (Build/Pipeline)
+- **Empacotamento de modulo adicional**
+  - Pasta `bot-iptv` agora e copiada automaticamente no build e no publish.
+
+---
+
 ## [1.0.45] - 2026-02-16
 
 ### 🎉 Adicionado (Features)
