@@ -1790,7 +1790,7 @@ namespace MeuGestorVODs
 
         private void MainMenuDarkM3uChecker_Click(object sender, RoutedEventArgs e)
         {
-            if (TryOpenIntegratedHtml("DARK M3U CHECKER", DarkBulletHtmlFileName))
+            if (TryOpenIntegratedHtmlWithExternalFallback("DARK M3U CHECKER", DarkBulletHtmlFileName))
             {
                 return;
             }
@@ -2366,14 +2366,7 @@ namespace MeuGestorVODs
 
         private bool TryOpenIntegratedHtml(string moduleName, string fileName)
         {
-            var candidates = new[]
-            {
-                Path.Combine(AppContext.BaseDirectory, fileName),
-                Path.Combine(Environment.CurrentDirectory, fileName),
-                Path.Combine(Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..")), fileName)
-            };
-
-            var filePath = candidates.FirstOrDefault(File.Exists);
+            var filePath = ResolveIntegratedHtmlPath(fileName);
             if (string.IsNullOrWhiteSpace(filePath))
             {
                 return false;
@@ -2384,6 +2377,55 @@ namespace MeuGestorVODs
 
             StatusMessage = $"Modulo {moduleName} aberto na aba: {Path.GetFileName(filePath)}";
             return true;
+        }
+
+        private bool TryOpenIntegratedHtmlWithExternalFallback(string moduleName, string fileName)
+        {
+            var filePath = ResolveIntegratedHtmlPath(fileName);
+            if (string.IsNullOrWhiteSpace(filePath))
+            {
+                return false;
+            }
+
+            try
+            {
+                OpenModuleInTab(moduleName, filePath);
+                StatusMessage = $"Modulo {moduleName} aberto na aba: {Path.GetFileName(filePath)}";
+                return true;
+            }
+            catch (Exception ex)
+            {
+                DiagnosticsLogger.Error(moduleName, "Falha ao abrir na aba interna, tentando navegador externo.", ex);
+
+                try
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = filePath,
+                        UseShellExecute = true
+                    });
+
+                    StatusMessage = $"Modulo {moduleName} aberto no navegador externo (fallback).";
+                    return true;
+                }
+                catch (Exception fallbackEx)
+                {
+                    DiagnosticsLogger.Error(moduleName, "Falha tambem no fallback externo.", fallbackEx);
+                    return false;
+                }
+            }
+        }
+
+        private static string? ResolveIntegratedHtmlPath(string fileName)
+        {
+            var candidates = new[]
+            {
+                Path.Combine(AppContext.BaseDirectory, fileName),
+                Path.Combine(Environment.CurrentDirectory, fileName),
+                Path.Combine(Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..")), fileName)
+            };
+
+            return candidates.FirstOrDefault(File.Exists);
         }
 
         private void OpenModuleInTab(string moduleName, string htmlPath)
