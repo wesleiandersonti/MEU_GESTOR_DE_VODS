@@ -1,6 +1,6 @@
 {
-  "version": "1.0.58",
-  "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.58/MeuGestorVODs-Setup-v1.0.58.exe",
+  "version": "1.0.59",
+  "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.59/MeuGestorVODs-Setup-v1.0.59.exe",
   "sha256": "",
   "notes": [
     "Novo menu: Puxador Lista BR (Abertos) com botao Buscar e Atualizar",
