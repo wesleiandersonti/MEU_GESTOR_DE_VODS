@@ -1,8 +1,9 @@
 {
-  "version": "1.0.62",
-  "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.62/MeuGestorVODs-Setup-v1.0.62.exe",
+  "version": "1.0.64",
+  "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.64/MeuGestorVODs-Setup-v1.0.64.exe",
   "sha256": "",
   "notes": [
+    "Puxador Lista BR: opcao para salvar somente canais online com relatorio online/offline",
     "IPTV Checker: novo Modo Diagnostico com log detalhado e copiar diagnostico",
     "Novo menu: Puxador Lista BR (Abertos) com botao Buscar e Atualizar",
     "Geracao automatica de playlist legal de canais brasileiros em arquivo .m3u",

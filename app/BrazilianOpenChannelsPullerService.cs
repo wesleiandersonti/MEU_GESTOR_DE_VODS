@@ -16,11 +16,12 @@ public sealed class BrazilianOpenChannelsPullerService
         Timeout = TimeSpan.FromSeconds(30)
     };
 
-    public async Task<BrazilianOpenChannelsPullResult> PullAndSaveAsync(string outputPath)
+    public async Task<BrazilianOpenChannelsPullResult> PullAndSaveAsync(string outputPath, bool onlyOnline = false)
     {
         var result = new BrazilianOpenChannelsPullResult
         {
-            OutputPath = outputPath
+            OutputPath = outputPath,
+            OnlyOnlineMode = onlyOnline
         };
 
         var sources = await LoadSourcesAsync();
@@ -53,16 +54,57 @@ public sealed class BrazilianOpenChannelsPullerService
 
         result.TotalUnique = unique.Count;
 
+        List<M3UEntry> finalEntries = unique;
+        if (onlyOnline)
+        {
+            var online = new List<M3UEntry>();
+            var offline = 0;
+
+            foreach (var entry in unique)
+            {
+                var isOnline = await IsStreamLikelyOnlineAsync(entry.Url.Trim());
+                if (isOnline)
+                {
+                    online.Add(entry);
+                }
+                else
+                {
+                    offline++;
+                }
+            }
+
+            result.TotalOnline = online.Count;
+            result.TotalOffline = offline;
+            finalEntries = online;
+        }
+
+        result.TotalSaved = finalEntries.Count;
+
         var outputDir = Path.GetDirectoryName(outputPath);
         if (!string.IsNullOrWhiteSpace(outputDir) && !Directory.Exists(outputDir))
         {
             Directory.CreateDirectory(outputDir);
         }
 
-        var m3u = BuildM3u(unique);
+        var m3u = BuildM3u(finalEntries);
         await File.WriteAllTextAsync(outputPath, m3u, Encoding.UTF8);
 
         return result;
+    }
+
+    private static async Task<bool> IsStreamLikelyOnlineAsync(string url)
+    {
+        try
+        {
+            using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(6));
+            using var req = new HttpRequestMessage(HttpMethod.Get, url);
+            var res = await Http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, cts.Token);
+            return (int)res.StatusCode >= 200 && (int)res.StatusCode < 400;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static string BuildM3u(IEnumerable<M3UEntry> entries)
@@ -156,8 +198,12 @@ public sealed class BrazilianOpenChannelsSource
 public sealed class BrazilianOpenChannelsPullResult
 {
     public string OutputPath { get; set; } = string.Empty;
+    public bool OnlyOnlineMode { get; set; }
     public int SourcesRead { get; set; }
     public int TotalFound { get; set; }
     public int TotalUnique { get; set; }
+    public int TotalOnline { get; set; }
+    public int TotalOffline { get; set; }
+    public int TotalSaved { get; set; }
     public List<string> Warnings { get; set; } = new();
 }

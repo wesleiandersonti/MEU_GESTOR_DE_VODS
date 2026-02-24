@@ -1954,13 +1954,22 @@ namespace MeuGestorVODs
             Grid.SetRow(sourceInfo, 2);
             root.Children.Add(sourceInfo);
 
+            var onlineOnlyCheck = new System.Windows.Controls.CheckBox
+            {
+                Content = "Salvar somente canais online (verificação na hora)",
+                Margin = new Thickness(0, 0, 0, 10),
+                IsChecked = true
+            };
+            Grid.SetRow(onlineOnlyCheck, 3);
+            root.Children.Add(onlineOnlyCheck);
+
             var resultText = new TextBlock
             {
                 Text = "Pronto para atualizar.",
                 Margin = new Thickness(0, 0, 0, 12),
                 TextWrapping = TextWrapping.Wrap
             };
-            Grid.SetRow(resultText, 3);
+            Grid.SetRow(resultText, 4);
             root.Children.Add(resultText);
 
             var actions = new StackPanel
@@ -1976,7 +1985,7 @@ namespace MeuGestorVODs
             actions.Children.Add(updateButton);
             actions.Children.Add(openButton);
             actions.Children.Add(closeButton);
-            Grid.SetRow(actions, 4);
+            Grid.SetRow(actions, 5);
             root.Children.Add(actions);
 
             updateButton.Click += async (_, _) =>
@@ -1995,14 +2004,18 @@ namespace MeuGestorVODs
 
                 try
                 {
+                    var onlyOnline = onlineOnlyCheck.IsChecked == true;
                     var puller = new BrazilianOpenChannelsPullerService();
-                    var result = await puller.PullAndSaveAsync(selectedPath);
+                    var result = await puller.PullAndSaveAsync(selectedPath, onlyOnline);
 
                     var warningText = result.Warnings.Count > 0
                         ? $" | Avisos: {result.Warnings.Count}"
                         : string.Empty;
 
-                    var summary = $"Atualizado com sucesso. Fontes lidas: {result.SourcesRead}. Itens encontrados: {result.TotalFound}. Unicos salvos: {result.TotalUnique}{warningText}.";
+                    var summary = onlyOnline
+                        ? $"Atualizado com sucesso. Fontes lidas: {result.SourcesRead}. Encontrados: {result.TotalFound}. Unicos: {result.TotalUnique}. Online: {result.TotalOnline}. Offline: {result.TotalOffline}. Salvos: {result.TotalSaved}{warningText}."
+                        : $"Atualizado com sucesso. Fontes lidas: {result.SourcesRead}. Itens encontrados: {result.TotalFound}. Unicos: {result.TotalUnique}. Salvos: {result.TotalSaved}{warningText}.";
+
                     resultText.Text = summary;
                     StatusMessage = summary;
                     openButton.IsEnabled = File.Exists(selectedPath);
