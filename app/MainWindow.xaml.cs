@@ -1744,11 +1744,7 @@ namespace MeuGestorVODs
             var catalogGrid = new Grid { Margin = new Thickness(0, 0, 0, 6) };
             catalogGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(90) });
             catalogGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            catalogGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(65) });
-            catalogGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(55) });
-            catalogGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(55) });
             catalogGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
-            catalogGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
 
             var typeBox = new System.Windows.Controls.ComboBox { Height = 28, Margin = new Thickness(0, 0, 6, 0) };
             typeBox.Items.Add("Canal");
@@ -1763,28 +1759,15 @@ namespace MeuGestorVODs
                 ToolTip = "Formato: Titulo|URL"
             };
 
-            var yearBox = new System.Windows.Controls.TextBox { Height = 28, Margin = new Thickness(0, 0, 6, 0), ToolTip = "Ano" };
-            var seasonBox = new System.Windows.Controls.TextBox { Height = 28, Margin = new Thickness(0, 0, 6, 0), ToolTip = "Temp" };
-            var episodeBox = new System.Windows.Controls.TextBox { Height = 28, Margin = new Thickness(0, 0, 6, 0), ToolTip = "Ep" };
-
-            var addCatalogButton = new System.Windows.Controls.Button { Content = "Adicionar item", Height = 28, Margin = new Thickness(0, 0, 6, 0) };
-            var autoSearchButton = new System.Windows.Controls.Button { Content = "Pesquisa automática", Height = 28 };
+            var addCatalogButton = new System.Windows.Controls.Button { Content = "Adicionar item", Height = 28 };
 
             Grid.SetColumn(typeBox, 0);
             Grid.SetColumn(catalogTitleUrlBox, 1);
-            Grid.SetColumn(yearBox, 2);
-            Grid.SetColumn(seasonBox, 3);
-            Grid.SetColumn(episodeBox, 4);
-            Grid.SetColumn(addCatalogButton, 5);
-            Grid.SetColumn(autoSearchButton, 6);
+            Grid.SetColumn(addCatalogButton, 2);
 
             catalogGrid.Children.Add(typeBox);
             catalogGrid.Children.Add(catalogTitleUrlBox);
-            catalogGrid.Children.Add(yearBox);
-            catalogGrid.Children.Add(seasonBox);
-            catalogGrid.Children.Add(episodeBox);
             catalogGrid.Children.Add(addCatalogButton);
-            catalogGrid.Children.Add(autoSearchButton);
             optionsPanel.Children.Add(catalogGrid);
 
             var validateOnlineCheck = new System.Windows.Controls.CheckBox
@@ -1794,6 +1777,32 @@ namespace MeuGestorVODs
                 IsChecked = true
             };
             optionsPanel.Children.Add(validateOnlineCheck);
+
+            var searchRow = new Grid { Margin = new Thickness(0, 8, 0, 0) };
+            searchRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
+            searchRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(170) });
+            searchRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            searchRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
+
+            var searchTypeLabel = new TextBlock { Text = "Tipo pesquisa:", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) };
+            var searchTypeBox = new System.Windows.Controls.ComboBox { Height = 28, Margin = new Thickness(0, 0, 8, 0) };
+            searchTypeBox.Items.Add("Filmes em alta");
+            searchTypeBox.Items.Add("Séries em alta");
+            searchTypeBox.Items.Add("Filmes e séries (misto)");
+            searchTypeBox.SelectedIndex = 2;
+
+            var searchQueryBox = new System.Windows.Controls.TextBox { Height = 28, Margin = new Thickness(0, 0, 8, 0), ToolTip = "Opcional: ação, comédia, 2026..." };
+            var autoSearchButton = new System.Windows.Controls.Button { Content = "Pesquisa automática", Height = 28 };
+
+            Grid.SetColumn(searchTypeLabel, 0);
+            Grid.SetColumn(searchTypeBox, 1);
+            Grid.SetColumn(searchQueryBox, 2);
+            Grid.SetColumn(autoSearchButton, 3);
+            searchRow.Children.Add(searchTypeLabel);
+            searchRow.Children.Add(searchTypeBox);
+            searchRow.Children.Add(searchQueryBox);
+            searchRow.Children.Add(autoSearchButton);
+            optionsPanel.Children.Add(searchRow);
 
             Grid.SetRow(optionsPanel, 6);
             Grid.SetColumnSpan(optionsPanel, 2);
@@ -1839,7 +1848,7 @@ namespace MeuGestorVODs
                 return (type, year, season, episode);
             }
 
-            async Task<List<(string title, string url, string type, string year, string season, string episode)>> DiscoverTrendingYouTubeItemsAsync(string searchQuery)
+            async Task<List<(string title, string url, string type, string year, string season, string episode)>> DiscoverTrendingYouTubeItemsAsync(string searchQuery, string searchMode)
             {
                 var output = new List<(string title, string url, string type, string year, string season, string episode)>();
                 var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -1859,13 +1868,20 @@ namespace MeuGestorVODs
 
                 var queries = new List<string>();
                 if (!string.IsNullOrWhiteSpace(searchQuery)) queries.Add(searchQuery.Trim());
-                queries.AddRange(new[]
+
+                var mode = (searchMode ?? string.Empty).ToLowerInvariant();
+                if (mode.Contains("filmes") && !mode.Contains("série") && !mode.Contains("series"))
                 {
-                    "filmes em alta 2026",
-                    "filme completo dublado",
-                    "series em alta",
-                    "episodio completo serie"
-                });
+                    queries.AddRange(new[] { "filmes em alta", "filme completo dublado", "lançamentos filmes" });
+                }
+                else if (mode.Contains("séries") || mode.Contains("series"))
+                {
+                    queries.AddRange(new[] { "séries em alta", "episódio completo", "temporada completa" });
+                }
+                else
+                {
+                    queries.AddRange(new[] { "filmes em alta", "séries em alta", "mais vistos youtube brasil" });
+                }
 
                 using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(25) };
                 http.DefaultRequestHeaders.UserAgent.ParseAdd("MeuGestorVODs/1.0");
@@ -1938,14 +1954,13 @@ namespace MeuGestorVODs
                 }
 
                 var type = (typeBox.SelectedItem?.ToString() ?? "Canal").Trim().ToLowerInvariant();
-                var row = $"{title}|{url}|type={type}|year={yearBox.Text.Trim()}|season={seasonBox.Text.Trim()}|episode={episodeBox.Text.Trim()}";
+                var autoMeta = InferAutoMetadata(title);
+                var effectiveType = type == "canal" ? autoMeta.type : type;
+                var row = $"{title}|{url}|type={effectiveType}|year={autoMeta.year}|season={autoMeta.season}|episode={autoMeta.episode}";
 
                 urlsBox.Text = string.IsNullOrWhiteSpace(urlsBox.Text) ? row : urlsBox.Text + Environment.NewLine + row;
                 urlsTabControl.SelectedIndex = 0;
                 catalogTitleUrlBox.Text = string.Empty;
-                yearBox.Text = string.Empty;
-                seasonBox.Text = string.Empty;
-                episodeBox.Text = string.Empty;
             };
 
             autoSearchButton.Click += async (_, _) =>
@@ -1954,8 +1969,9 @@ namespace MeuGestorVODs
                 addCatalogButton.IsEnabled = false;
                 try
                 {
-                    var query = catalogTitleUrlBox.Text.Trim();
-                    var discovered = await DiscoverTrendingYouTubeItemsAsync(query);
+                    var query = searchQueryBox.Text.Trim();
+                    var searchMode = searchTypeBox.SelectedItem?.ToString() ?? "Filmes e séries (misto)";
+                    var discovered = await DiscoverTrendingYouTubeItemsAsync(query, searchMode);
                     if (discovered.Count == 0)
                     {
                         System.Windows.MessageBox.Show("Nenhum item encontrado agora. Tente um termo no campo Titulo|URL (ex.: filmes acao 2026) e clique novamente.", "YouTube para M3U", MessageBoxButton.OK, MessageBoxImage.Information);
