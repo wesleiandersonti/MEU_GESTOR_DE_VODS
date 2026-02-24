@@ -1748,6 +1748,7 @@ namespace MeuGestorVODs
             catalogGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(55) });
             catalogGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(55) });
             catalogGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
+            catalogGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
 
             var typeBox = new System.Windows.Controls.ComboBox { Height = 28, Margin = new Thickness(0, 0, 6, 0) };
             typeBox.Items.Add("Canal");
@@ -1766,7 +1767,8 @@ namespace MeuGestorVODs
             var seasonBox = new System.Windows.Controls.TextBox { Height = 28, Margin = new Thickness(0, 0, 6, 0), ToolTip = "Temp" };
             var episodeBox = new System.Windows.Controls.TextBox { Height = 28, Margin = new Thickness(0, 0, 6, 0), ToolTip = "Ep" };
 
-            var addCatalogButton = new System.Windows.Controls.Button { Content = "Adicionar item", Height = 28 };
+            var addCatalogButton = new System.Windows.Controls.Button { Content = "Adicionar item", Height = 28, Margin = new Thickness(0, 0, 6, 0) };
+            var autoSearchButton = new System.Windows.Controls.Button { Content = "Pesquisa automática", Height = 28 };
 
             Grid.SetColumn(typeBox, 0);
             Grid.SetColumn(catalogTitleUrlBox, 1);
@@ -1774,6 +1776,7 @@ namespace MeuGestorVODs
             Grid.SetColumn(seasonBox, 3);
             Grid.SetColumn(episodeBox, 4);
             Grid.SetColumn(addCatalogButton, 5);
+            Grid.SetColumn(autoSearchButton, 6);
 
             catalogGrid.Children.Add(typeBox);
             catalogGrid.Children.Add(catalogTitleUrlBox);
@@ -1781,6 +1784,7 @@ namespace MeuGestorVODs
             catalogGrid.Children.Add(seasonBox);
             catalogGrid.Children.Add(episodeBox);
             catalogGrid.Children.Add(addCatalogButton);
+            catalogGrid.Children.Add(autoSearchButton);
             optionsPanel.Children.Add(catalogGrid);
 
             var validateOnlineCheck = new System.Windows.Controls.CheckBox
@@ -1804,6 +1808,99 @@ namespace MeuGestorVODs
             var generateApiButton = new System.Windows.Controls.Button { Content = "Gerar via API 24/7", Width = 170, Margin = new Thickness(0, 0, 8, 0) };
             var generateButton = new System.Windows.Controls.Button { Content = "Gerar M3U", Width = 110, Margin = new Thickness(0, 0, 8, 0) };
             var closeButton = new System.Windows.Controls.Button { Content = "Fechar", Width = 90 };
+
+            (string type, string year, string season, string episode) InferAutoMetadata(string title)
+            {
+                var normalized = (title ?? string.Empty).ToLowerInvariant();
+                var type = (normalized.Contains("serie") || normalized.Contains("série") || normalized.Contains("episodio") || normalized.Contains("episódio")) ? "serie" : "filme";
+
+                var yearMatch = Regex.Match(title ?? string.Empty, "(19|20)\\d{2}");
+                var year = yearMatch.Success ? yearMatch.Value : string.Empty;
+
+                var season = string.Empty;
+                var episode = string.Empty;
+
+                var seMatch = Regex.Match(normalized, "s(\\d{1,2})e(\\d{1,2})", RegexOptions.IgnoreCase);
+                if (seMatch.Success)
+                {
+                    season = seMatch.Groups[1].Value;
+                    episode = seMatch.Groups[2].Value;
+                }
+                else
+                {
+                    var xMatch = Regex.Match(normalized, "(\\d{1,2})x(\\d{1,2})");
+                    if (xMatch.Success)
+                    {
+                        season = xMatch.Groups[1].Value;
+                        episode = xMatch.Groups[2].Value;
+                    }
+                }
+
+                return (type, year, season, episode);
+            }
+
+            async Task<List<(string title, string url, string type, string year, string season, string episode)>> DiscoverTrendingYouTubeItemsAsync(string searchQuery)
+            {
+                var output = new List<(string title, string url, string type, string year, string season, string episode)>();
+                var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                var queries = new List<string>();
+                if (!string.IsNullOrWhiteSpace(searchQuery)) queries.Add(searchQuery.Trim());
+                queries.AddRange(new[]
+                {
+                    "filmes em alta 2026",
+                    "filme completo dublado",
+                    "series em alta",
+                    "episodio completo serie"
+                });
+
+                using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(25) };
+                http.DefaultRequestHeaders.UserAgent.ParseAdd("MeuGestorVODs/1.0");
+
+                foreach (var q in queries.Distinct(StringComparer.OrdinalIgnoreCase))
+                {
+                    var rssUrl = $"https://www.youtube.com/feeds/videos.xml?search_query={Uri.EscapeDataString(q)}";
+                    string xml;
+                    try
+                    {
+                        xml = await http.GetStringAsync(rssUrl);
+                    }
+                    catch
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        var doc = System.Xml.Linq.XDocument.Parse(xml);
+                        var ns = (System.Xml.Linq.XNamespace)"http://www.w3.org/2005/Atom";
+
+                        foreach (var entry in doc.Descendants(ns + "entry").Take(12))
+                        {
+                            var title = entry.Element(ns + "title")?.Value?.Trim() ?? string.Empty;
+                            var link = entry.Element(ns + "link")?.Attribute("href")?.Value?.Trim() ?? string.Empty;
+
+                            if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(link) || !IsYouTubeUrl(link))
+                                continue;
+
+                            if (!seen.Add(link))
+                                continue;
+
+                            var meta = InferAutoMetadata(title);
+                            output.Add((title, link, meta.type, meta.year, meta.season, meta.episode));
+
+                            if (output.Count >= 30)
+                                return output;
+                        }
+                    }
+                    catch
+                    {
+                        // ignora feed invalido
+                    }
+                }
+
+                return output;
+            }
 
             addCatalogButton.Click += (_, _) =>
             {
@@ -1833,6 +1930,36 @@ namespace MeuGestorVODs
                 yearBox.Text = string.Empty;
                 seasonBox.Text = string.Empty;
                 episodeBox.Text = string.Empty;
+            };
+
+            autoSearchButton.Click += async (_, _) =>
+            {
+                autoSearchButton.IsEnabled = false;
+                addCatalogButton.IsEnabled = false;
+                try
+                {
+                    var query = catalogTitleUrlBox.Text.Trim();
+                    var discovered = await DiscoverTrendingYouTubeItemsAsync(query);
+                    if (discovered.Count == 0)
+                    {
+                        System.Windows.MessageBox.Show("Nenhum item encontrado agora. Tente um termo no campo Titulo|URL (ex.: filmes acao 2026) e clique novamente.", "YouTube para M3U", MessageBoxButton.OK, MessageBoxImage.Information);
+                        return;
+                    }
+
+                    var rows = discovered
+                        .Select(x => $"{x.title}|{x.url}|type={x.type}|year={x.year}|season={x.season}|episode={x.episode}")
+                        .ToList();
+
+                    var block = string.Join(Environment.NewLine, rows);
+                    urlsBox.Text = string.IsNullOrWhiteSpace(urlsBox.Text) ? block : urlsBox.Text + Environment.NewLine + block;
+                    urlsTabControl.SelectedIndex = 0;
+                    StatusMessage = $"Pesquisa automática concluída: {discovered.Count} itens adicionados.";
+                }
+                finally
+                {
+                    autoSearchButton.IsEnabled = true;
+                    addCatalogButton.IsEnabled = true;
+                }
             };
             actions.Children.Add(generateApiButton);
             actions.Children.Add(generateButton);
