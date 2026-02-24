@@ -1844,6 +1844,19 @@ namespace MeuGestorVODs
                 var output = new List<(string title, string url, string type, string year, string season, string episode)>();
                 var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+                bool IsLowValueTitle(string title)
+                {
+                    var t = (title ?? string.Empty).ToLowerInvariant();
+                    var blockedTerms = new[]
+                    {
+                        "trailer", "teaser", "review", "critica", "crítica", "explicado", "resumo",
+                        "react", "reação", "reacao", "cena", "clip", "shorts", "cortes", "corte",
+                        "entrevista", "bastidores", "promo", "análise", "analise"
+                    };
+
+                    return blockedTerms.Any(term => t.Contains(term));
+                }
+
                 var queries = new List<string>();
                 if (!string.IsNullOrWhiteSpace(searchQuery)) queries.Add(searchQuery.Trim());
                 queries.AddRange(new[]
@@ -1881,6 +1894,9 @@ namespace MeuGestorVODs
                             var link = entry.Element(ns + "link")?.Attribute("href")?.Value?.Trim() ?? string.Empty;
 
                             if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(link) || !IsYouTubeUrl(link))
+                                continue;
+
+                            if (IsLowValueTitle(title))
                                 continue;
 
                             if (!seen.Add(link))
@@ -1953,7 +1969,7 @@ namespace MeuGestorVODs
                     var block = string.Join(Environment.NewLine, rows);
                     urlsBox.Text = string.IsNullOrWhiteSpace(urlsBox.Text) ? block : urlsBox.Text + Environment.NewLine + block;
                     urlsTabControl.SelectedIndex = 0;
-                    StatusMessage = $"Pesquisa automática concluída: {discovered.Count} itens adicionados.";
+                    StatusMessage = $"Pesquisa automática concluída: {discovered.Count} itens adicionados (filtro anti trailer/shorts ativo).";
                 }
                 finally
                 {
