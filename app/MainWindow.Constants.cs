@@ -51,6 +51,8 @@ namespace MeuGestorVODs
         private const string UpdateManifestPrimaryUrl = "https://raw.githubusercontent.com/wesleiandersonti/MEU_GESTOR_DE_VODS/main/app/update.json";
         private const string UpdateManifestFallbackUrl = "https://wesleiandersonti.github.io/MEU_GESTOR_DE_VODS/update.json";
         private const string YouTubeLiveApiDefaultBaseUrl = "http://127.0.0.1:8085";
+        private const string YouTubeLiveApiFixedKey = "weslei_local_yt_api";
+        private const string YouTubeApiFixedOutputFileName = "youtube_api_24x7.m3u";
         private const int StreamCheckLogRetentionDays = 14;
         private const int ServerScoreRetentionDays = 30;
         private const int MaxStreamCheckLogRows = 250000;
