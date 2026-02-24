@@ -1,6 +1,6 @@
 {
-  "version": "1.0.60",
-  "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.60/MeuGestorVODs-Setup-v1.0.60.exe",
+  "version": "1.0.61",
+  "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.61/MeuGestorVODs-Setup-v1.0.61.exe",
   "sha256": "",
   "notes": [
     "YouTube para M3U: nova opcao de geracao via API 24/7 com canais ativos",
