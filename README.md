@@ -1,8 +1,21 @@
-# Repositorio Multi-Projetos
+# MEU GESTOR DE VODS (APP)
 
-Este repositorio foi organizado em duas pastas principais:
+Este repositório contém **apenas o app desktop WPF** do MEU GESTOR DE VODS:
 
-- app/: aplicacao desktop e arquivos legados do projeto original
-- saas-gestor/: sistema SaaS (backend NestJS, frontend React, Docker)
+- interface do app (`app/`)
+- instalador
+- updater/manifests de update
+- changelog e pipeline de release do app
 
-Cada projeto agora esta isolado em sua propria pasta para facilitar manutencao, deploy e versionamento.
+## Separação APP x SAAS
+
+O backend SaaS (API, Docker, deploy em VM, YouTube Live Manager 24/7) foi separado para um repositório dedicado:
+
+- `https://github.com/wesleiandersonti/MGV-SAAS`
+
+Essa separação mantém o ciclo de release do app independente da operação do backend em produção.
+
+## Release atual do app
+
+- Versão: `1.0.74`
+- Tag: `v1.0.74`
