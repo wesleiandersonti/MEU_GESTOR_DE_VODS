@@ -1837,6 +1837,14 @@ namespace MeuGestorVODs
             };
             optionsPanel.Children.Add(adaptiveInfoText);
 
+            var segmentedLearningText = new TextBlock
+            {
+                Margin = new Thickness(0, 3, 0, 0),
+                Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(84, 92, 120)),
+                TextWrapping = TextWrapping.Wrap
+            };
+            optionsPanel.Children.Add(segmentedLearningText);
+
             void RefreshLearningStatus()
             {
                 var snap = learning.GetSnapshot("youtube-m3u");
@@ -1850,6 +1858,13 @@ namespace MeuGestorVODs
                 var topError = snap.TopErrors.FirstOrDefault() ?? "nenhum";
                 var strategy = adaptiveStrictFilter ? "estratégia adaptativa: filtro rigoroso + busca curta" : "estratégia adaptativa: filtro normal";
                 learningStatusText.Text = $"Aprendizado: {rate}% acerto ({snap.Success}/{snap.Total}) | score {snap.Score} | erro recorrente: {topError} | {strategy}";
+
+                var filme = learning.GetSnapshot("youtube-m3u-filme");
+                var serie = learning.GetSnapshot("youtube-m3u-serie");
+                var canal = learning.GetSnapshot("youtube-m3u-canal");
+
+                int RateOf(LearningSnapshot s) => s.Total > 0 ? (s.Success * 100 / s.Total) : 0;
+                segmentedLearningText.Text = $"Por tipo → Filme: {RateOf(filme)}% ({filme.Success}/{filme.Total}) | Série: {RateOf(serie)}% ({serie.Success}/{serie.Total}) | Canal: {RateOf(canal)}% ({canal.Success}/{canal.Total})";
             }
 
             RefreshLearningStatus();
