@@ -1,0 +1,126 @@
+services:
+  backend-staging:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: saas-backend-staging
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_MASTER_HOST: mariadb-staging
+      DB_MASTER_PORT: 3306
+      DB_SLAVE_HOST: mariadb-staging
+      DB_SLAVE_PORT: 3306
+      DB_USER: saas_app
+      DB_PASSWORD: ${DB_APP_PASSWORD}
+      DB_NAME: saas_gestor_staging
+      REDIS_HOST: redis-staging
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-${JWT_SECRET}}
+      JWT_EXPIRATION: 1h
+      JWT_REFRESH_EXPIRATION: 7d
+      YOUTUBE_MANAGER_BASE_URL: http://youtube-live-manager-staging:8787
+      YOUTUBE_MANAGER_API_KEY: ${YOUTUBE_INTERNAL_API_KEY}
+      YOUTUBE_MANAGER_TIMEOUT_MS: ${YOUTUBE_MANAGER_TIMEOUT_MS:-15000}
+      YOUTUBE_RATE_LIMIT_WINDOW_SEC: ${YOUTUBE_RATE_LIMIT_WINDOW_SEC:-60}
+      YOUTUBE_RATE_LIMIT_MAX_REQUESTS: ${YOUTUBE_RATE_LIMIT_MAX_REQUESTS:-60}
+      YOUTUBE_FREE_EXPORTS_PER_DAY: ${YOUTUBE_FREE_EXPORTS_PER_DAY:-5}
+    ports:
+      - "3100:3000"
+    depends_on:
+      mariadb-staging:
+        condition: service_healthy
+      redis-staging:
+        condition: service_started
+      youtube-live-manager-staging:
+        condition: service_started
+    networks:
+      - saas-staging-network
+
+  youtube-live-manager-staging:
+    build:
+      context: ./youtube-live-manager
+      dockerfile: Dockerfile
+    container_name: youtube-live-manager-staging
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 8787
+      DB_HOST: mariadb-staging
+      DB_PORT: 3306
+      DB_USER: saas_app
+      DB_PASS: ${DB_APP_PASSWORD}
+      DB_NAME: saas_gestor_staging
+      REDIS_HOST: redis-staging
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      API_KEY: ${YOUTUBE_INTERNAL_API_KEY}
+      SCAN_INTERVAL_SEC: ${YOUTUBE_SCAN_INTERVAL_SEC:-60}
+      SCAN_CONCURRENCY: ${YOUTUBE_SCAN_CONCURRENCY:-4}
+      SCANNER_AUTOSTART: ${YOUTUBE_SCANNER_AUTOSTART:-true}
+      YTDLP_PATH: yt-dlp
+      OUTPUT_DIR: /app/output
+      PUBLIC_BASE_URL: ${YOUTUBE_PUBLIC_BASE_URL:-http://localhost:3100/api/v1/youtube}
+      EXPORT_USE_PROXY: ${YOUTUBE_EXPORT_USE_PROXY:-false}
+      AUTO_MIGRATE: true
+      SEED_DEFAULT_CHANNELS: ${YOUTUBE_SEED_DEFAULT_CHANNELS:-true}
+    expose:
+      - "8787"
+    volumes:
+      - youtube-live-output-staging:/app/output
+    depends_on:
+      mariadb-staging:
+        condition: service_healthy
+      redis-staging:
+        condition: service_started
+    networks:
+      - saas-staging-network
+
+  mariadb-staging:
+    image: mariadb:10.6
+    container_name: saas-mariadb-staging
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: saas_gestor_staging
+      MYSQL_USER: saas_app
+      MYSQL_PASSWORD: ${DB_APP_PASSWORD}
+    volumes:
+      - mariadb-staging-data:/var/lib/mysql
+    ports:
+      - "3310:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p\"$$MYSQL_ROOT_PASSWORD\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - saas-staging-network
+
+  redis-staging:
+    image: redis:7-alpine
+    container_name: saas-redis-staging
+    restart: unless-stopped
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --appendonly yes
+    volumes:
+      - redis-staging-data:/data
+    ports:
+      - "6380:6379"
+    networks:
+      - saas-staging-network
+
+networks:
+  saas-staging-network:
+    driver: bridge
+
+volumes:
+  mariadb-staging-data:
+  redis-staging-data:
+  youtube-live-output-staging:
