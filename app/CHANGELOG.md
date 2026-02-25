@@ -30,6 +30,32 @@ e este projeto adere a [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.0.74] - 2026-02-25
+
+### 🎉 Adicionado (Features)
+- **YouTube para M3U profissional com aprendizado e catalogacao**
+  - Aprendizado inteligente por feedback/reward para melhorar relevancia no fluxo YouTube para M3U.
+  - Catalogacao de `Canal`, `Filme` e `Serie` com metadados e pesquisa automatica em itens em alta.
+  - Nova aba `Favoritos` para salvar canais e adicionar rapidamente na lista.
+
+### 🔄 Melhorado (Integracao)
+- **Fluxo API 24/7 e manager 24x7**
+  - Integracao consolidada com `youtube-live-manager` para scanner continuo, validacao de stream e exportacao M3U de canais online.
+  - Geracao dinamica via `POST /export/m3u` e `GET /export/m3u/latest`.
+  - API 24/7 voltou a aceitar URL/chave configuraveis no app, sem chave fixa.
+  - Caminho de saida do arquivo M3U voltou a ser livre/editavel.
+
+### 🛡️ Qualidade e Diagnostico
+- **Melhorias de confiabilidade no fluxo YouTube**
+  - Deduplicacao de URLs e opcao de validar links online antes de salvar.
+  - Modo Diagnostico no IPTV Checker com log detalhado para troubleshooting.
+
+### ✅ Compatibilidade
+- **Modo manual preservado**
+  - Mantida compatibilidade total do modo manual existente na aba YouTube para M3U.
+
+---
+
 ## [1.0.73] - 2026-02-25
 
 ### 🐛 Corrigido (Fix)
