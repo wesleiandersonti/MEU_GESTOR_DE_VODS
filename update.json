@@ -1,7 +1,7 @@
 {
   "version": "1.0.74",
   "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.74/MeuGestorVODs-Setup-v1.0.74.exe",
-  "sha256": "",
+  "sha256": "2a6b521ec65014654146aafd9c23347bec65894b1c37baf67aef09a647e443b4",
   "notes": [
     "YouTube para M3U profissional: aprendizado por feedback/reward, catalogacao Canal/Filme/Serie e pesquisa automatica",
     "YouTube para M3U: nova aba Favoritos, deduplicacao de URLs e validacao opcional de links online",
