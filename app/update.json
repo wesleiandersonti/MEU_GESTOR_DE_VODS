@@ -1,24 +1,11 @@
 {
   "version": "1.0.74",
   "installerUrl": "https://github.com/wesleiandersonti/MEU_GESTOR_DE_VODS/releases/download/v1.0.74/MeuGestorVODs-Setup-v1.0.74.exe",
-  "sha256": "",
+  "sha256": "2a6b521ec65014654146aafd9c23347bec65894b1c37baf67aef09a647e443b4",
   "notes": [
     "Aprendizado inteligente (feedback/reward): historico de acertos/erros e score no YouTube para M3U",
     "Correcao: API 24/7 voltou a aceitar URL/chave configuraveis (sem chave fixa no app)",
     "Correcao: caminho de saida da playlist voltou a ser editavel no gerador YouTube",
-    "YouTube para M3U: removidos campos manuais de metadados + novo tipo de pesquisa automatica (mais procurados)",
-    "YouTube para M3U: filtro premium para reduzir trailer/teaser/shorts/cortes na pesquisa automatica",
-    "YouTube para M3U: botao Pesquisa automatica para itens em alta/recentes com metadados auto",
-    "YouTube para M3U profissional: catalogacao de Filme/Serie/Canal com metadados no M3U",
-    "YouTube para M3U: nova aba Favoritos para salvar canais e adicionar rapidamente na lista",
-    "YouTube para M3U API 24/7 fixo: URL local, chave fixa e arquivo padrao no app",
-    "YouTube para M3U: deduplicacao de URLs e opcao validar links online antes de salvar",
-    "Puxador Lista BR: opcao para salvar somente canais online com relatorio online/offline",
-    "IPTV Checker: novo Modo Diagnostico com log detalhado e copiar diagnostico",
-    "YouTube para M3U: nova opcao de geracao via API 24/7 com canais ativos",
-    "Integracao: configuracao de API Base URL e X-API-Key salva com protecao local",
-    "Atualizacao: consumo de /export/m3u e /export/m3u/latest para gerar playlist dinamica",
-    "Novo modulo: youtube-live-manager com scanner continuo, validacao e exportacao M3U",
     "Compatibilidade: modo manual da aba YouTube para M3U mantido"
   ]
 }
