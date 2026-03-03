@@ -10,6 +10,39 @@
 
 ## 🚀 Quick Deploy (5 minutes)
 
+## Instalação em VM limpa (1 comando)
+
+```bash
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/wesleiandersonti/MEU_GESTOR_DE_VODS/main/deploy/install-vm.sh)"
+```
+
+O script `deploy/install-vm.sh` faz:
+
+- instala `git`, `docker` e dependências
+- clona o repositório oficial em `/opt/mgv-saas`
+- executa `bootstrap-env.sh` (quando disponível)
+- sobe stack com `docker compose up -d --build`
+
+## Atualização (1 comando)
+
+```bash
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/wesleiandersonti/MEU_GESTOR_DE_VODS/main/deploy/update-vm.sh)"
+```
+
+## Escalar workers
+
+```bash
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/wesleiandersonti/MEU_GESTOR_DE_VODS/main/deploy/scale-workers.sh)" -- 3
+```
+
+Atalho direto no host já provisionado:
+
+```bash
+cd /opt/mgv-saas
+if [ -f saas-gestor/docker-compose.yml ]; then cd saas-gestor; fi
+docker compose up -d --scale iptv-worker=3
+```
+
 ### Method 1: Using the deploy script
 
 ```bash
