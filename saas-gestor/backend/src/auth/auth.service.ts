@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, BadRequestException, Inject } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, Inject, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -34,6 +34,8 @@ export interface LoginResponse {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
@@ -207,12 +209,12 @@ export class AuthService {
     // Try to get from cache
     const cachedUser = await this.cacheManager.get<User>(cacheKey);
     if (cachedUser) {
-      console.log('✅ User found in cache');
+      this.logger.debug(`User ${userId} loaded from cache`);
       return cachedUser;
     }
-    
+
     // If not in cache, get from database
-    console.log('🔄 User not in cache, fetching from database...');
+    this.logger.debug(`User ${userId} not found in cache, querying database`);
     const user = await this.userRepository.findOne({
       where: { id: userId },
       relations: ['tenant'],
@@ -221,7 +223,7 @@ export class AuthService {
     if (user) {
       // Store in cache for 1 hour
       await this.cacheManager.set(cacheKey, user, 3600);
-      console.log('💾 User cached for 1 hour');
+      this.logger.debug(`User ${userId} cached for 1 hour`);
     }
     
     return user;
@@ -257,6 +259,6 @@ export class AuthService {
   async clearTenantCache(tenantId: number): Promise<void> {
     // In a real app, you'd use a pattern to delete all keys matching tenant:*
     await this.cacheManager.del(`tenant:stats:${tenantId}`);
-    console.log(`🧹 Cache cleared for tenant ${tenantId}`);
+    this.logger.log(`Cache cleared for tenant ${tenantId}`);
   }
 }

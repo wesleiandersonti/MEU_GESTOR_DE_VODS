@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException, Inject } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Inject, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindManyOptions } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
@@ -25,6 +25,8 @@ export interface UpdateApplicationDto extends Partial<CreateApplicationDto> {
 
 @Injectable()
 export class ApplicationsService {
+  private readonly logger = new Logger(ApplicationsService.name);
+
   constructor(
     @InjectRepository(Application)
     private applicationRepository: Repository<Application>,
@@ -40,7 +42,7 @@ export class ApplicationsService {
     // Try cache
     const cached = await this.cacheManager.get<Application[]>(cacheKey);
     if (cached) {
-      console.log('✅ Applications loaded from cache');
+      this.logger.debug(`Applications loaded from cache for tenant ${tenantId}`);
       return cached;
     }
 

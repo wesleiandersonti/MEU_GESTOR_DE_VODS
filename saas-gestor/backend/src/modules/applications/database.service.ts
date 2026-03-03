@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   Inject,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -66,6 +67,7 @@ export interface QueryResult {
 @Injectable()
 export class DatabaseService {
   private connections: Map<number, Connection> = new Map();
+  private readonly logger = new Logger(DatabaseService.name);
 
   constructor(
     @InjectRepository(DatabaseConnection)
@@ -313,13 +315,14 @@ export class DatabaseService {
           throw new BadRequestException(`Query execution not supported for ${connection.type}`);
       }
 
+      result.executionTime = Date.now() - startTime;
+
       // Update statistics
       connection.queryCount++;
       connection.totalRowsReturned += result.rowCount;
       await this.dbConnectionRepository.save(connection);
 
-      // Log query (in production, use proper audit logging)
-      console.log(`[DB Query] User ${userId} executed: ${queryDto.query.substring(0, 100)}...`);
+      this.logger.debug(`Database query executed by user ${userId} on connection ${id}`);
 
       return result;
     } catch (error) {
@@ -448,7 +451,7 @@ export class DatabaseService {
         columns,
         rows: rows as any[],
         rowCount: Array.isArray(rows) ? rows.length : 0,
-        executionTime: Date.now() - performance.now(),
+        executionTime: 0,
         query: queryDto.query,
       };
     } finally {
@@ -479,7 +482,7 @@ export class DatabaseService {
         columns: result.fields.map((f) => f.name),
         rows: result.rows,
         rowCount: result.rowCount || 0,
-        executionTime: Date.now() - performance.now(),
+        executionTime: 0,
         query: queryDto.query,
       };
     } finally {

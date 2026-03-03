@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as crypto from 'crypto';
@@ -42,6 +42,8 @@ export interface EnvironmentVariableResponse {
 
 @Injectable()
 export class EnvironmentVariablesService {
+  private readonly logger = new Logger(EnvironmentVariablesService.name);
+
   constructor(
     @InjectRepository(EnvironmentVariable)
     private envVarRepository: Repository<EnvironmentVariable>,
@@ -178,19 +180,21 @@ export class EnvironmentVariablesService {
     tenantId: number,
     userId: number,
   ): Promise<EnvironmentVariableResponse[]> {
-    const results: EnvironmentVariableResponse[] = [];
+    const results: Array<EnvironmentVariableResponse | null> = new Array(variables.length).fill(null);
 
-    for (const variable of variables) {
+    await this.runWithConcurrency(variables, 5, async (variable, index) => {
       try {
-        const result = await this.create(applicationId, variable, tenantId, userId);
-        results.push(result);
+        results[index] = await this.create(applicationId, variable, tenantId, userId);
       } catch (error) {
-        // Log error but continue with other variables
-        console.error(`Failed to create env var ${variable.key}:`, error.message);
+        this.logger.warn(
+          `Failed to create env var ${variable.key}: ${this.getErrorMessage(error)}`,
+        );
       }
-    }
+    });
 
-    return results;
+    return results.filter(
+      (result): result is EnvironmentVariableResponse => result !== null,
+    );
   }
 
   /**
@@ -311,23 +315,30 @@ export class EnvironmentVariablesService {
     let cloned = 0;
     let failed = 0;
 
-    for (const sourceVar of sourceVars) {
+    await this.runWithConcurrency(sourceVars, 5, async (sourceVar) => {
       try {
-        await this.create(targetApplicationId, {
-          key: sourceVar.key,
-          value: sourceVar.value || '',
-          scope: sourceVar.scope,
-          isSecret: sourceVar.isSecret,
-          description: sourceVar.description
-            ? `${sourceVar.description} (cloned)`
-            : 'Cloned from another application',
-        }, tenantId, userId);
+        await this.create(
+          targetApplicationId,
+          {
+            key: sourceVar.key,
+            value: sourceVar.value || '',
+            scope: sourceVar.scope,
+            isSecret: sourceVar.isSecret,
+            description: sourceVar.description
+              ? `${sourceVar.description} (cloned)`
+              : 'Cloned from another application',
+          },
+          tenantId,
+          userId,
+        );
         cloned++;
       } catch (error) {
         failed++;
-        console.error(`Failed to clone env var ${sourceVar.key}:`, error.message);
+        this.logger.warn(
+          `Failed to clone env var ${sourceVar.key}: ${this.getErrorMessage(error)}`,
+        );
       }
-    }
+    });
 
     return { cloned, failed };
   }
@@ -343,6 +354,7 @@ export class EnvironmentVariablesService {
     markAsSecret: boolean = false,
   ): Promise<{ imported: number; failed: number; errors: string[] }> {
     const lines = envFileContent.split('\n');
+    const parsedVariables: Array<{ key: string; value: string }> = [];
     const errors: string[] = [];
     let imported = 0;
     let failed = 0;
@@ -370,6 +382,10 @@ export class EnvironmentVariablesService {
         value = value.slice(1, -1);
       }
 
+      parsedVariables.push({ key, value });
+    }
+
+    await this.runWithConcurrency(parsedVariables, 5, async ({ key, value }) => {
       try {
         await this.create(
           applicationId,
@@ -385,9 +401,9 @@ export class EnvironmentVariablesService {
         imported++;
       } catch (error) {
         failed++;
-        errors.push(`${key}: ${error.message}`);
+        errors.push(`${key}: ${this.getErrorMessage(error)}`);
       }
-    }
+    });
 
     return { imported, failed, errors };
   }
@@ -439,12 +455,10 @@ export class EnvironmentVariablesService {
     const existingVars = await this.envVarRepository.find({
       where: { applicationId },
     });
-    const existingKeys = new Set(existingVars.map((v) => v.key));
     const updatedKeys = new Set<string>();
 
-    for (const variable of variables) {
+    await this.runWithConcurrency(variables, 5, async (variable) => {
       if (variable.id) {
-        // Update existing
         try {
           await this.update(
             variable.id,
@@ -455,36 +469,38 @@ export class EnvironmentVariablesService {
           updated++;
           updatedKeys.add(variable.key.toUpperCase());
         } catch (error) {
-          console.error(`Failed to update ${variable.key}:`, error.message);
-        }
-      } else {
-        // Create new
-        try {
-          await this.create(
-            applicationId,
-            {
-              key: variable.key,
-              value: variable.value,
-              isSecret: variable.isSecret || false,
-            },
-            tenantId,
-            userId,
+          this.logger.warn(
+            `Failed to update ${variable.key}: ${this.getErrorMessage(error)}`,
           );
-          created++;
-          updatedKeys.add(variable.key.toUpperCase());
-        } catch (error) {
-          console.error(`Failed to create ${variable.key}:`, error.message);
         }
+        return;
       }
-    }
+
+      try {
+        await this.create(
+          applicationId,
+          {
+            key: variable.key,
+            value: variable.value,
+            isSecret: variable.isSecret || false,
+          },
+          tenantId,
+          userId,
+        );
+        created++;
+        updatedKeys.add(variable.key.toUpperCase());
+      } catch (error) {
+        this.logger.warn(`Failed to create ${variable.key}: ${this.getErrorMessage(error)}`);
+      }
+    });
 
     // Delete variables not in the update list
-    for (const existing of existingVars) {
-      if (!updatedKeys.has(existing.key)) {
-        await this.envVarRepository.remove(existing);
-        deleted++;
-      }
-    }
+    const variablesToDelete = existingVars.filter((existing) => !updatedKeys.has(existing.key));
+
+    await this.runWithConcurrency(variablesToDelete, 5, async (existing) => {
+      await this.envVarRepository.remove(existing);
+      deleted++;
+    });
 
     return { created, updated, deleted };
   }
@@ -541,5 +557,37 @@ export class EnvironmentVariablesService {
       createdAt: envVar.createdAt,
       updatedAt: envVar.updatedAt,
     };
+  }
+
+  private async runWithConcurrency<T>(
+    items: T[],
+    concurrency: number,
+    handler: (item: T, index: number) => Promise<void>,
+  ): Promise<void> {
+    if (items.length === 0) {
+      return;
+    }
+
+    const limit = Math.max(1, Math.min(concurrency, items.length));
+    let cursor = 0;
+
+    const workers = Array.from({ length: limit }, async () => {
+      while (true) {
+        const index = cursor;
+        cursor += 1;
+
+        if (index >= items.length) {
+          break;
+        }
+
+        await handler(items[index], index);
+      }
+    });
+
+    await Promise.all(workers);
+  }
+
+  private getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : 'Unknown error';
   }
 }

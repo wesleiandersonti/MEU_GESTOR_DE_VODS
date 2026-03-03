@@ -12,7 +12,14 @@ function log(level: LogLevel, message: string, meta: LogMeta = {}): void {
     ...meta,
   };
 
-  console.log(JSON.stringify(payload));
+  const serialized = `${JSON.stringify(payload)}\n`;
+
+  if (level === 'ERROR') {
+    process.stderr.write(serialized);
+    return;
+  }
+
+  process.stdout.write(serialized);
 }
 
 export const logger = {

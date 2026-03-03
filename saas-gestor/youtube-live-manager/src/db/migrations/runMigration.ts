@@ -7,10 +7,14 @@ import { logger } from '../../utils/logger';
 export async function runInitMigration(): Promise<void> {
   const distPath = path.resolve(__dirname, '001_init.sql');
   const sourcePath = path.resolve(process.cwd(), 'src/db/migrations/001_init.sql');
-  const filePath = await fs
-    .access(distPath)
-    .then(() => distPath)
-    .catch(() => sourcePath);
+  let filePath = sourcePath;
+  try {
+    await fs.access(distPath);
+    filePath = distPath;
+  } catch {
+    filePath = sourcePath;
+  }
+
   const template = await fs.readFile(filePath, 'utf-8');
   const sql = template.replace(/{{DB_NAME}}/g, `\`${env.db.name}\``);
 

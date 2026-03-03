@@ -1,3 +1,18 @@
 bin/
 obj/
 .vs/
+
+# Node / frontend build artifacts
+node_modules/
+dist/
+
+# Environment
+.env
+.env.*
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
